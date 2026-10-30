@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import AttendanceActions from '../components/AttendanceActions'
 import DutyCard from '../components/DutyCard'
 import FaceStatusCard from '../components/FaceStatusCard'
-import DemoNotice from '../components/DemoNotice'
 import { useApp } from '../context/AppContext'
 import { getAttendanceSnapshot } from '../utils/attendance'
 import { formatTime, greeting } from '../utils/format'
@@ -61,11 +60,6 @@ export default function DashboardPage() {
       <AttendanceActions />
 
       <FaceStatusCard />
-
-      <DemoNotice>
-        <strong>Prototype mode.</strong> Facial registration, camera capture, GPS, and
-        timestamps are simulated. Nothing is sent to a server or stored permanently.
-      </DemoNotice>
     </div>
   )
 }
