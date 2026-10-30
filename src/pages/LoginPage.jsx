@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowRight,
   Eye,
@@ -152,6 +152,10 @@ export default function LoginPage() {
             Prototype build · Fictional student data · No server connection
           </p>
         </form>
+
+        <p className="login__admin">
+          <Link to="/admin">Open the Coordinator / Department Head dashboard</Link>
+        </p>
       </section>
     </div>
   )

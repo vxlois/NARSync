@@ -16,6 +16,7 @@ import HistoryPage from './pages/HistoryPage'
 import RecordDetailsPage from './pages/RecordDetailsPage'
 import ProfilePage from './pages/ProfilePage'
 import SettingsPage from './pages/SettingsPage'
+import AdminApp from './admin/AdminApp'
 
 function RequireAuth() {
   const { isAuthenticated } = useApp()
@@ -60,6 +61,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/admin/*" element={<AdminApp />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<LoginRoute />} />

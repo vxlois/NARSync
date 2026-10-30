@@ -2,9 +2,13 @@
 
 NARSync is a centralized attendance monitoring concept for the Related Learning
 Experience (RLE) duty of nursing students at Bicol University Polangui. This repository
-contains the **student mobile app prototype** only.
+contains two prototypes:
 
-The app demonstrates the complete student attendance journey with realistic mock data:
+- The **student mobile app** at `/` — the complete student attendance journey.
+- The **administrative web dashboard** at `/admin` — the desktop-first RLE Coordinator and
+  Department Head workspace.
+
+The student app demonstrates the complete attendance journey with realistic mock data:
 
 - Demo sign-in
 - Assigned RLE group and duty details
@@ -15,8 +19,9 @@ The app demonstrates the complete student attendance journey with realistic mock
 - Student profile and attendance preferences
 
 > **Prototype notice:** This build has no backend, database, real authentication, facial
-> recognition, camera access, GPS access, notifications, or permanent storage. All student
-> details, photos, locations, and timestamps in the attendance flow are demo data.
+> recognition, camera access, GPS access, notifications, or permanent storage. All student,
+> group, schedule, location, and attendance details — in both the student app and the
+> admin dashboard — are fictional demo data.
 
 ## Tech stack
 
@@ -118,10 +123,69 @@ Prototype controls on the capture screen let you preview the unavailable-GPS err
 The bottom navigation contains Home, Attendance, History, and Profile. Immersive capture,
 review, and success screens hide the navigation to keep attention on the attendance task.
 
+## Administrative dashboard
+
+Open `/admin` directly (the prototype has no auth guard) or use the link on the student
+sign-in screen. The dashboard uses a persistent left sidebar and a top bar with the page
+title, search, notifications, and a profile menu.
+
+| Screen | Route |
+| --- | --- |
+| Overview dashboard | `/admin` |
+| Students | `/admin/students` |
+| Groups | `/admin/groups` |
+| Create group | `/admin/groups/new` |
+| Group details | `/admin/groups/:groupId` |
+| Duty schedules | `/admin/schedules` |
+| Clinical locations | `/admin/locations` |
+| Attendance records | `/admin/attendance` |
+| Flagged records | `/admin/flagged` |
+| Reports | `/admin/reports` |
+| Settings | `/admin/settings` |
+
+### Roles
+
+Use the profile menu (or Settings) to switch between two simulated roles:
+
+- **RLE Coordinator** — full management: assign students, create and edit groups, publish
+  schedules, edit locations, resolve flagged records, and save settings.
+- **Department Head** — view-only oversight across every section, including CSV exports,
+  with mutating controls replaced by a notice.
+
+### Group registration sequence
+
+The prototype enforces the required order: **Create Group → Assign Students → students
+open their assigned group → students register their own faces → progress updates**. A
+student can only belong to one group, and registration is only available to students with a
+group assignment. Moving a student between groups updates both groups' progress.
+
+### Dashboard data rules
+
+- Summary cards cover total registered students, students scheduled for duty, students
+  timed in, students with completed attendance, and records flagged for review.
+- Every summary card is a drill-down link into the matching Student, Schedule, Attendance,
+  or Flagged view. The current date, group, year level, and location filters are carried
+  into the destination page, along with a quick view that matches the card's metric.
+- The date, group, year level, and clinical location filters scope the attendance summary,
+  seven-day trend, recent submissions, and recent flagged records.
+- Incomplete schedules remain drafts and cannot be treated as ready for attendance.
+- Reports and list exports generate CSV files in the browser. Nothing is uploaded or saved.
+
+> **Prototype notice:** Admin state is entirely in memory. Reloading the browser restores
+> the seeded demo data, and role switching is simulated — it is not authentication.
+
 ## Project structure
 
 ```text
 src/
+  admin/               Coordinator / Department Head dashboard
+    components/        Sidebar, topbar, shell, shared admin UI
+    pages/             One component per admin screen
+    styles/            Admin design system (adm- prefix)
+    utils/             CSV export helpers
+    adminData.js       Fictional admin dataset and status helpers
+    AdminProvider.jsx  In-memory admin state and actions
+    AdminApp.jsx       Admin route tree
   components/          Reusable UI and app-specific components
     ui/                Button, Badge, Card, Sheet, TextField, etc.
   context/             Session state, attendance, facial registration, toasts
@@ -151,7 +215,6 @@ src/
 
 ## Out of scope for this phase
 
-- RLE Coordinator and Department Head web dashboards
 - Node.js/Express API and PostgreSQL database
 - Real facial recognition or liveness detection
 - Real geolocation verification
