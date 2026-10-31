@@ -184,13 +184,10 @@ export default function LoginPage() {
           </Button>
         </form>
 
-<<<<<<< HEAD
         <p className="login__admin">
           <Link to="/admin">Open the Coordinator / Department Head dashboard</Link>
         </p>
-=======
         <p className="login__footer">Bicol University Polangui</p>
->>>>>>> 91fe9f9 (Update login page and dashboard UI)
       </section>
     </div>
   )
