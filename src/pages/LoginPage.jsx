@@ -1,17 +1,12 @@
-<<<<<<< HEAD
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-=======
->>>>>>> 91fe9f9 (Update login page and dashboard UI)
 import {
   ArrowRight,
   Eye,
   EyeOff,
   LockKeyhole,
   UserRound,
-} from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+} from 'lucide-react'git add src/pages/LoginPage.jsx
 import NursingStudentsIllustration from '../components/NursingStudentsIllustration'
 import Button from '../components/ui/Button'
 import TextField from '../components/ui/TextField'
