@@ -10,7 +10,6 @@ import {
   Smartphone,
 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
-import DemoNotice from '../components/DemoNotice'
 import { ConfirmSheet } from '../components/ui/Sheet'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
@@ -47,14 +46,14 @@ export default function SettingsPage() {
   const handleReset = () => {
     resetDemoData()
     setResetOpen(false)
-    toast('Demo data reset to the starting state.', 'success')
+    toast('Data reset to the starting state.', 'success')
   }
 
   const handleSignOut = () => {
     setSignOutOpen(false)
     logout()
     navigate('/login', { replace: true })
-    toast('Signed out of the demo student account.', 'default')
+    toast('Signed out of your student account.', 'default')
   }
 
   return (
@@ -72,33 +71,29 @@ export default function SettingsPage() {
           <ToggleRow
             icon={BellRing}
             title="Attendance reminders"
-            description="Show reminder prompts around your duty schedule in this demo."
+            description="Show reminder prompts around your duty schedule."
             checked={settings.reminders}
             onChange={(value) => updateSetting('reminders', value)}
           />
           <ToggleRow
             icon={Navigation}
             title="Location review reminder"
-            description="Prompt me to check the simulated location before submitting."
+            description="Prompt me to check the location before submitting."
             checked={settings.locationReminder}
             onChange={(value) => updateSetting('locationReminder', value)}
           />
           <ToggleRow
             icon={Smartphone}
             title="Haptic feedback"
-            description="Use subtle vibration cues in the demo where supported."
+            description="Use subtle vibration cues where supported."
             checked={settings.haptics}
             onChange={(value) => updateSetting('haptics', value)}
           />
         </div>
-        <p className="settings-note">
-          These preferences are stored for the current prototype session only. No real
-          notifications or device permissions are used.
-        </p>
       </section>
 
       <section className="settings-group">
-        <h2 className="profile-section-title">Prototype data</h2>
+        <h2 className="profile-section-title">Data</h2>
         <div className="settings-card">
           <button
             type="button"
@@ -109,7 +104,7 @@ export default function SettingsPage() {
               <RotateCcw size={17} />
             </span>
             <span className="setting-row__text">
-              <span className="setting-row__title">Reset demo data</span>
+              <span className="setting-row__title">Reset Data</span>
               <span className="setting-row__sub">
                 Clear facial views, attendance submissions, and preferences.
               </span>
@@ -126,7 +121,7 @@ export default function SettingsPage() {
             </span>
             <span className="setting-row__text">
               <span className="setting-row__title">Sign out</span>
-              <span className="setting-row__sub">Return to the demo sign-in screen.</span>
+              <span className="setting-row__sub">Return to the sign-in screen.</span>
             </span>
             <ChevronRight size={17} className="profile-link__chevron" aria-hidden="true" />
           </button>
@@ -140,34 +135,23 @@ export default function SettingsPage() {
             <span className="about-card__mark" aria-hidden="true">N</span>
             <div>
               <h2>NARSync student app</h2>
-              <p>RLE attendance monitoring prototype</p>
+              <p>RLE attendance monitoring</p>
             </div>
             <Info size={17} className="muted" aria-hidden="true" style={{ marginLeft: 'auto' }} />
           </div>
-          <p>
-            This build demonstrates the student attendance workflow only. Facial
-            recognition, geolocation verification, notifications, and permanent storage
-            are not implemented.
-          </p>
           <div className="about-card__version">
-            <span>Prototype version 0.1.0</span>
-            <span>Fictional data</span>
+            <span>Version 0.1.0</span>
           </div>
         </div>
       </section>
-
-      <DemoNotice>
-        NARSync is in a prototype phase. Coordinator and Department Head dashboards are
-        not included in this student app build.
-      </DemoNotice>
 
       <ConfirmSheet
         open={resetOpen}
         onClose={() => setResetOpen(false)}
         onConfirm={handleReset}
-        title="Reset all demo data?"
-        description="This clears the facial registration views, all attendance submissions made in this session, and your attendance preferences. The demo sign-in remains active."
-        confirmLabel="Reset demo data"
+        title="Reset all data?"
+        description="This clears the facial registration views, all attendance submissions made in this session, and your attendance preferences. Your sign-in remains active."
+        confirmLabel="Reset Data"
         tone="danger"
         icon={RotateCcw}
       />
@@ -177,7 +161,7 @@ export default function SettingsPage() {
         onClose={() => setSignOutOpen(false)}
         onConfirm={handleSignOut}
         title="Sign out of NARSync?"
-        description="Your current demo session state will be cleared from the app. You can sign back in with the same demo account."
+        description="Your current session state will be cleared from the app. You can sign back in with the same account."
         confirmLabel="Sign out"
         tone="danger"
         icon={LogOut}

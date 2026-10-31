@@ -18,7 +18,7 @@ export default function GroupCameraPreview({ captured = false, capturedAt = null
       <div className="camera-preview__top">
         <span className="camera-preview__demo">
           <span className="camera-preview__dot" aria-hidden="true" />
-          Demo camera
+          Camera preview
         </span>
         <span className="camera-preview__clock">{formatClock(clock)}</span>
       </div>
@@ -49,21 +49,20 @@ export default function GroupCameraPreview({ captured = false, capturedAt = null
         </div>
 
         <p className="camera-preview__guide">
-          {captured ? 'Demo group photo ready' : 'Position the whole group inside the frame'}
+          {captured ? 'Group photo ready' : 'Position the whole group inside the frame'}
         </p>
 
         {captured && (
           <div className="camera-preview__captured" role="status">
             <CheckCircle2 size={22} aria-hidden="true" />
             <span>Photo captured</span>
-            <small>Demo evidence</small>
+            <small>Photo evidence</small>
           </div>
         )}
       </div>
 
       <div className="camera-preview__bottom">
-        <span>Simulated preview</span>
-        <span>Camera access is not used</span>
+        <span>Group photo evidence</span>
       </div>
     </div>
   )

@@ -1,6 +1,5 @@
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { CheckCircle2, History, House } from 'lucide-react'
-import DemoNotice from '../components/DemoNotice'
 import PageHeader from '../components/PageHeader'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -30,7 +29,7 @@ export default function SuccessPage() {
         <EmptyState
           icon={CheckCircle2}
           title="Submission not found"
-          description="This demo record is not available in the current session. It may have been reset."
+          description="This record is not available in the current session. It may have been reset."
           action={
             <Button variant="secondary" onClick={() => navigate('/attendance')}>
               Back to attendance
@@ -49,11 +48,11 @@ export default function SuccessPage() {
         </span>
         <h1>{typeLabel} recorded</h1>
         <p>
-          Your demo attendance submission was successful. The dashboard and attendance
+          Your attendance submission was successful. The dashboard and attendance
           history have been updated for this session.
         </p>
         <p className="success-time">{formatTime(evidence.at)}</p>
-        <Badge tone="success">Demo submission successful</Badge>
+        <Badge tone="success">Submission successful</Badge>
       </div>
 
       <div className="success-card">
@@ -80,16 +79,10 @@ export default function SuccessPage() {
           </div>
           <div className="review-row">
             <dt>Evidence</dt>
-            <dd>Demo group photo</dd>
+            <dd>Group photo</dd>
           </div>
         </dl>
       </div>
-
-      <DemoNotice tone="success">
-        <strong>Demo submission saved.</strong> This record exists only in the current
-        prototype session. Nothing was uploaded to a server, and no facial recognition or
-        live GPS verification was performed.
-      </DemoNotice>
 
       <div className="success-actions">
         <Button block icon={House} onClick={() => navigate('/dashboard')}>

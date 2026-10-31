@@ -38,7 +38,7 @@ export default function AppProvider({ children }) {
   const login = useCallback(({ studentId, password }) => {
     const id = studentId.trim()
     if (id !== DEMO_CREDENTIALS.studentId || password !== DEMO_CREDENTIALS.password) {
-      throw new Error('The student ID or password does not match the demo account.')
+      throw new Error('The student ID or password is incorrect.')
     }
     setIsAuthenticated(true)
   }, [])

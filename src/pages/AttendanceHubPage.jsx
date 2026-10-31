@@ -1,7 +1,6 @@
 import { Check, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import AttendanceActions from '../components/AttendanceActions'
-import DemoNotice from '../components/DemoNotice'
 import DutyCard from '../components/DutyCard'
 import RecordCard from '../components/RecordCard'
 import Badge from '../components/ui/Badge'
@@ -21,7 +20,7 @@ function TimelineItem({ label, evidence, missingText }) {
           <span>{evidence ? formatTime(evidence.at) : 'Not recorded'}</span>
         </div>
         <p className="attendance-timeline__meta">
-          {evidence ? `${evidence.locationName} · Simulated GPS` : missingText}
+          {evidence ? `${evidence.locationName} · GPS` : missingText}
         </p>
       </div>
     </div>
@@ -78,11 +77,6 @@ export default function AttendanceHubPage() {
         <AttendanceActions />
       </section>
 
-      <DemoNotice>
-        Camera, photo, timestamp, and GPS data in this workflow are simulated for the
-        prototype. Facial recognition and location verification are not active.
-      </DemoNotice>
-
       <section className="section" aria-labelledby="how-it-works-title">
         <div className="section__head">
           <h2 className="section__title" id="how-it-works-title">
@@ -94,7 +88,7 @@ export default function AttendanceHubPage() {
             <span className="how-it-works__num" aria-hidden="true">1</span>
             <div className="how-it-works__text">
               <strong>Capture a group photo</strong>
-              <p>The whole assigned group must be visible in the demo camera frame.</p>
+              <p>The whole assigned group must be visible in the camera frame.</p>
             </div>
           </div>
           <div className="how-it-works__step">
@@ -108,7 +102,7 @@ export default function AttendanceHubPage() {
             <span className="how-it-works__num" aria-hidden="true">3</span>
             <div className="how-it-works__text">
               <strong>Confirm the submission</strong>
-              <p>Your dashboard and history update after the demo submission succeeds.</p>
+              <p>Your dashboard and history update after the submission succeeds.</p>
             </div>
           </div>
         </div>

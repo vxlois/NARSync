@@ -124,7 +124,7 @@ export default function DutyDetailsPage() {
           </li>
           <li>
             <span className="guideline-list__num" aria-hidden="true">3</span>
-            Review the timestamp and simulated location before confirming each submission.
+            Review the timestamp and location before confirming each submission.
           </li>
         </ol>
       </Card>

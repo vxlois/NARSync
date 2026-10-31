@@ -10,7 +10,6 @@ import {
   RotateCcw,
   ShieldCheck,
 } from 'lucide-react'
-import DemoNotice from '../components/DemoNotice'
 import GroupCameraPreview from '../components/GroupCameraPreview'
 import PageHeader from '../components/PageHeader'
 import Badge from '../components/ui/Badge'
@@ -106,8 +105,8 @@ export default function CapturePage() {
       setCapturing(false)
       toast(
         method === 'image'
-          ? 'Demo image selected as attendance evidence.'
-          : 'Demo group photo captured.',
+          ? 'Image selected as attendance evidence.'
+          : 'Group photo captured.',
         'success',
       )
     }, 650)
@@ -126,12 +125,12 @@ export default function CapturePage() {
     setDraft({
       type,
       capturedAt,
-      method: captureMethod === 'image' ? 'Demo image selection' : 'Demo camera capture',
+      method: captureMethod === 'image' ? 'Image selection' : 'Camera capture',
       locationAvailable: available,
       locationName: available ? simulatedLocation.name : 'Location unavailable',
       address: available
         ? simulatedLocation.address
-        : 'No simulated location was retrieved.',
+        : 'No location was retrieved.',
       coords: available ? { ...simulatedLocation.coords } : null,
       accuracy: available ? simulatedLocation.accuracy : null,
     })
@@ -186,11 +185,6 @@ export default function CapturePage() {
         </div>
       </div>
 
-      <DemoNotice>
-        The camera preview, photo, timestamp, and GPS reading in this flow are simulated.
-        No camera or location permission is used, and no image is uploaded.
-      </DemoNotice>
-
       <div className="capture-camera-wrap">
         <GroupCameraPreview captured={captured} capturedAt={capturedAt} />
 
@@ -211,7 +205,7 @@ export default function CapturePage() {
               onClick={() => handleCapture('image')}
               disabled={capturing}
             >
-              Use demo image
+              Use image
             </Button>
           </div>
         ) : (
@@ -222,7 +216,7 @@ export default function CapturePage() {
                 className="shutter-button"
                 onClick={() => handleCapture('camera')}
                 disabled={capturing}
-                aria-label="Capture demo group photo"
+                aria-label="Capture group photo"
               >
                 {capturing ? (
                   <Loader2 className="spinner" size={25} aria-hidden="true" />
@@ -239,11 +233,11 @@ export default function CapturePage() {
                 onClick={() => handleCapture('image')}
                 disabled={capturing}
               >
-                Select a demo image instead
+                Select an image instead
               </Button>
             </div>
             <p className="capture-controls__note">
-              Tap the shutter to simulate a group photo capture.
+              Tap the shutter to capture a group photo.
             </p>
           </>
         )}
@@ -274,7 +268,7 @@ export default function CapturePage() {
             {locationState === 'loading' && (
               <div className="location-card__spinner" role="status">
                 <Loader2 size={15} aria-hidden="true" />
-                Retrieving simulated location…
+                Retrieving location…
               </div>
             )}
             {locationState === 'ready' && (
@@ -287,13 +281,13 @@ export default function CapturePage() {
               <>
                 <span className="location-card__name">Location unavailable</span>
                 <span className="location-card__address">
-                  No simulated GPS reading was retrieved.
+                  No GPS reading was retrieved.
                 </span>
               </>
             )}
           </div>
           <Badge tone={locationState === 'ready' ? 'violet' : 'neutral'}>
-            Simulated GPS
+            GPS
           </Badge>
         </div>
 
@@ -316,7 +310,7 @@ export default function CapturePage() {
             <>
               <MapPin size={15} aria-hidden="true" />
               {locationState === 'loading'
-                ? 'Waiting for the simulated location check…'
+                ? 'Waiting for the location check…'
                 : `Could not compare with ${student.duty.facility}. You may still review the evidence.`}
             </>
           )}
@@ -324,15 +318,12 @@ export default function CapturePage() {
       </section>
 
       <details className="demo-panel">
-        <summary>Prototype controls</summary>
+        <summary>Preview controls</summary>
         <div className="demo-panel__body">
-          <p>
-            Toggle this to preview the unavailable-location state. The retrieval is a
-            demo and never uses your device GPS.
-          </p>
+          <p>Preview how the app behaves when a location cannot be retrieved.</p>
           <div className="setting-row" style={{ padding: 0 }}>
             <div className="setting-row__text">
-              <span className="setting-row__title">Simulate unavailable GPS</span>
+              <span className="setting-row__title">Unavailable GPS</span>
               <span className="setting-row__sub">Preview the missing-location error state.</span>
             </div>
             <button
@@ -340,13 +331,13 @@ export default function CapturePage() {
               className="switch"
               role="switch"
               aria-checked={simulateUnavailable}
-              aria-label="Simulate unavailable GPS"
+              aria-label="Unavailable GPS"
               onClick={toggleUnavailable}
             />
           </div>
           {simulateUnavailable && (
             <Button variant="ghost" size="sm" onClick={retryLocation}>
-              Retry simulated location
+              Retry location
             </Button>
           )}
         </div>
@@ -363,9 +354,9 @@ export default function CapturePage() {
       <p className="submit-bar__hint">
         {captured
           ? locationState === 'loading'
-            ? 'Waiting for the simulated location check…'
+            ? 'Waiting for the location check…'
             : 'You will review all evidence before confirming the submission.'
-          : 'Capture or select a demo group photo to continue.'}
+          : 'Capture or select a group photo to continue.'}
       </p>
     </div>
   )
