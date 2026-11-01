@@ -7,6 +7,8 @@ import {
   LockKeyhole,
   UserRound,
 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import NursingStudentsIllustration from '../components/NursingStudentsIllustration'
 import Button from '../components/ui/Button'
 import TextField from '../components/ui/TextField'
@@ -187,6 +189,7 @@ export default function LoginPage() {
         <p className="login__admin">
           <Link to="/admin">Open the Coordinator / Department Head dashboard</Link>
         </p>
+
         <p className="login__footer">Bicol University Polangui</p>
       </section>
     </div>

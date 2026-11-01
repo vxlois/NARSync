@@ -46,7 +46,7 @@ function NotFoundPage() {
       <EmptyState
         icon={Compass}
         title="Page not found"
-        description="The screen you are looking for does not exist in this prototype."
+        description="The screen you are looking for does not exist."
         action={
           <Button variant="secondary" onClick={() => navigate('/dashboard')}>
             Back to dashboard

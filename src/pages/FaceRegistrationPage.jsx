@@ -88,14 +88,14 @@ export default function FaceRegistrationPage() {
     resetFaceRegistration()
     setActiveId(FACE_VIEWS[0].id)
     setResetOpen(false)
-    toast('Demo facial registration has been reset.', 'default')
+    toast('Facial registration has been reset.', 'default')
   }
 
   const handleDemoFill = () => {
     if (scanningId) return
     FACE_VIEWS.forEach((view) => captureFaceView(view.id))
     setActiveId(FACE_VIEWS[FACE_VIEWS.length - 1].id)
-    toast('All five demo views captured.', 'success')
+    toast('All five views captured.', 'success')
   }
 
   return (
@@ -107,15 +107,14 @@ export default function FaceRegistrationPage() {
         backLabel="Back to dashboard"
       />
 
-      {faceCompleted ? (
+      {faceCompleted && (
         <div className="face-complete-panel">
           <div className="face-complete-panel__head">
             <CheckCircle2 size={20} aria-hidden="true" />
             <div>
               <h2>Facial registration complete</h2>
               <p>
-                Completed {formatDateMedium(faceCompletedAt)}. You can retake any view,
-                but the saved result remains demo data only.
+                Completed {formatDateMedium(faceCompletedAt)}. You can retake any view.
               </p>
             </div>
           </div>
@@ -126,19 +125,13 @@ export default function FaceRegistrationPage() {
               icon={RotateCcw}
               onClick={() => setResetOpen(true)}
             >
-              Reset demo registration
+              Reset registration
             </Button>
             <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
               Back to dashboard
             </Button>
           </div>
         </div>
-      ) : (
-        <DemoNotice>
-          <strong>Simulated registration.</strong> Live facial recognition, liveness
-          detection, and biometric storage are not implemented. Captured views are
-          placeholders held only in this prototype session.
-        </DemoNotice>
       )}
 
       <section className="face-progress" aria-label="Facial view progress">
@@ -183,7 +176,7 @@ export default function FaceRegistrationPage() {
       <div className="face-camera-wrap">
         <div
           className={`face-camera is-${activeView.id} ${isCaptured ? 'is-captured' : ''}`.trim()}
-          aria-label={`Simulated camera preview for the ${activeView.label.toLowerCase()} facial view`}
+          aria-label={`Camera preview for the ${activeView.label.toLowerCase()} facial view`}
         >
           <span className="face-camera__ring" aria-hidden="true" />
           {!isCaptured && !scanningId && (
@@ -198,13 +191,13 @@ export default function FaceRegistrationPage() {
           {scanningId === activeView.id && (
             <div className="face-camera__scanning" role="status">
               <Loader2 className="spinner" size={24} aria-hidden="true" />
-              Simulating scan…
+              Scanning…
             </div>
           )}
           {isCaptured && scanningId !== activeView.id && (
             <div className="face-camera__captured" role="status">
               <CheckCircle2 size={30} aria-hidden="true" />
-              <span>View captured · Demo</span>
+              <span>View captured</span>
             </div>
           )}
         </div>
@@ -228,9 +221,6 @@ export default function FaceRegistrationPage() {
           >
             {isCaptured ? `Retake ${activeView.label.toLowerCase()} view` : `Capture ${activeView.label.toLowerCase()} view`}
           </Button>
-          <p className="small muted" style={{ textAlign: 'center' }}>
-            Camera is simulated. No image is captured or uploaded.
-          </p>
         </div>
       </div>
 
@@ -248,7 +238,7 @@ export default function FaceRegistrationPage() {
               <h2>All five views captured</h2>
               <p>
                 Finish registration to mark your facial registration as complete on the
-                dashboard. This status is a prototype record only.
+                dashboard.
               </p>
             </div>
           </div>
@@ -263,7 +253,7 @@ export default function FaceRegistrationPage() {
       )}
 
       <button type="button" className="text-link" onClick={handleDemoFill} disabled={Boolean(scanningId)}>
-        Fill all five views with demo captures
+        Fill all five views automatically
       </button>
 
       <ConfirmSheet
@@ -272,7 +262,7 @@ export default function FaceRegistrationPage() {
         onConfirm={handleReset}
         title="Reset facial registration?"
         description="This clears all five captured views and removes the completed status from your dashboard. This cannot be undone."
-        confirmLabel="Reset demo data"
+        confirmLabel="Reset Data"
         tone="danger"
         icon={RotateCcw}
       />

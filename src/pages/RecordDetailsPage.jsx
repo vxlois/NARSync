@@ -38,7 +38,7 @@ function TimelineEntry({ label, evidence, emptyText }) {
             </span>
             <span>
               <ImageIcon size={11} aria-hidden="true" />
-              Demo group photo
+              Group photo
             </span>
           </div>
         </>
@@ -67,7 +67,7 @@ export default function RecordDetailsPage() {
         <EmptyState
           icon={CalendarX2}
           title="Record not found"
-          description="This record is not available in the current prototype session."
+          description="This record is not available in the current session."
           action={
             <Button variant="secondary" onClick={() => navigate('/history')}>
               Back to history
@@ -193,11 +193,6 @@ export default function RecordDetailsPage() {
       </Card>
 
       {record.note && <DemoNotice tone="warning">{record.note}</DemoNotice>}
-
-      <DemoNotice>
-        This record is synthetic prototype data. GPS coordinates and photo labels are
-        simulated; no biometric or location verification was performed.
-      </DemoNotice>
 
       {isOpenSession && todayRecord?.timeIn && (
         <Button

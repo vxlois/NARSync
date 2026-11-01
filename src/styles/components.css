@@ -884,6 +884,27 @@
   color: var(--white);
 }
 
+.duty-card--compact {
+  gap: 10px;
+  padding: 15px;
+  border-radius: 22px;
+}
+
+.duty-card--compact .duty-card__main h2 {
+  font-size: 1.04rem;
+}
+
+.duty-card--compact .duty-card__meta {
+  gap: 7px 14px;
+  padding-top: 10px;
+}
+
+.duty-card--compact .duty-card__link {
+  margin-top: -1px;
+  padding: 5px 4px;
+  font-size: 0.68rem;
+}
+
 /* Attendance actions */
 .attendance-actions {
   display: grid;

@@ -195,6 +195,153 @@
   font-size: 0.71rem;
 }
 
+/* Home notifications */
+.dashboard-list {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 13px;
+  transition: background 0.16s ease;
+}
+
+.notification-item + .notification-item {
+  border-top: 1px solid var(--border);
+}
+
+.notification-item:hover {
+  background: var(--surface-muted);
+}
+
+.notification-item__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 12px;
+}
+
+.notification-item__icon--violet {
+  background: var(--violet-050);
+  color: var(--violet-700);
+}
+
+.notification-item__icon--success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.notification-item__icon--warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.notification-item__icon--neutral {
+  background: var(--surface-muted);
+  color: var(--muted);
+}
+
+.notification-item__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.notification-item__title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.notification-item__description {
+  color: var(--muted);
+  font-size: 0.69rem;
+  line-height: 1.45;
+}
+
+.notification-item__chevron {
+  margin-top: 10px;
+  color: var(--muted-soft);
+}
+
+/* Home recent activity */
+.activity-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.activity-card:hover {
+  border-color: var(--violet-200);
+  box-shadow: var(--shadow-card);
+}
+
+.activity-card__icon {
+  display: grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  background: var(--violet-050);
+  color: var(--violet-700);
+}
+
+.activity-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.activity-card__title {
+  font-size: 0.8rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.activity-card__meta {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-card__time {
+  color: var(--muted-soft);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-card__end {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  color: var(--muted-soft);
+}
+
+.activity-card__end .badge {
+  padding: 3px 7px;
+  font-size: 0.57rem;
+}
+
 .avatar-link {
   display: grid;
   place-items: center;
@@ -213,75 +360,6 @@
 
 .avatar-link:hover {
   border-color: var(--violet-200);
-}
-
-.day-status {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px 15px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-}
-
-.day-status__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.day-status__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--ink);
-  font-size: 0.82rem;
-  font-weight: 750;
-}
-
-.day-status__times {
-  color: var(--muted);
-  font-size: 0.65rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.day-status__description {
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.5;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--muted-soft);
-  box-shadow: 0 0 0 3px rgba(140, 134, 152, 0.13);
-}
-
-.status-dot--violet {
-  background: var(--violet-600);
-  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.13);
-}
-
-.status-dot--success {
-  background: var(--success);
-  box-shadow: 0 0 0 3px rgba(21, 115, 71, 0.12);
-}
-
-.status-dot--warning {
-  background: #c07b00;
-  box-shadow: 0 0 0 3px rgba(192, 123, 0, 0.13);
-}
-
-.status-dot--danger {
-  background: var(--danger);
-  box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12);
 }
 
 /* ---------- Tab headers ---------- */
@@ -1944,10 +2022,6 @@
 @media (max-width: 359px) {
   .dashboard-head__copy h1 {
     font-size: 1.14rem;
-  }
-
-  .day-status__times {
-    font-size: 0.6rem;
   }
 
   .action-card {

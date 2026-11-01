@@ -62,17 +62,3 @@ export function matchesStatusFilter(record, filter) {
   return status === filter
 }
 
-/** A frozen, deterministic demo reading. Never presented as live GPS. */
-export function buildDemoEvidence({ type, capturedAt, locationAvailable, location }) {
-  return {
-    type,
-    capturedAt,
-    available: locationAvailable,
-    simulated: true,
-    photoLabel: 'Demo group photo',
-    locationName: locationAvailable ? location.name : 'Location unavailable',
-    address: locationAvailable ? location.address : 'No simulated location was retrieved.',
-    coords: locationAvailable ? { ...location.coords } : null,
-    accuracy: locationAvailable ? location.accuracy : null,
-  }
-}

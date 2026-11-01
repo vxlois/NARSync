@@ -3,12 +3,10 @@ import { useNavigate, Link } from 'react-router-dom'
 import {
   ChevronRight,
   ClipboardList,
-  GraduationCap,
   History,
   LogOut,
   Settings,
 } from 'lucide-react'
-import DemoNotice from '../components/DemoNotice'
 import FaceStatusCard from '../components/FaceStatusCard'
 import { ConfirmSheet } from '../components/ui/Sheet'
 import Badge from '../components/ui/Badge'
@@ -26,7 +24,7 @@ export default function ProfilePage() {
     setSignOutOpen(false)
     logout()
     navigate('/login', { replace: true })
-    toast('Signed out of the demo student account.', 'default')
+    toast('Signed out of your student account.', 'default')
   }
 
   return (
@@ -43,7 +41,6 @@ export default function ProfilePage() {
 
       <section className="profile-card">
         <span className="profile-avatar" aria-hidden="true">{student.initials}</span>
-        <h2>{student.name}</h2>
         <p className="profile-card__id">Student ID {student.id}</p>
         <p className="profile-card__program">
           {student.program}
@@ -52,29 +49,6 @@ export default function ProfilePage() {
         </p>
         <div className="profile-card__badges">
           <Badge tone="violet">{student.group.name}</Badge>
-          <Badge tone="neutral">Fictional demo student</Badge>
-        </div>
-      </section>
-
-      <section className="section">
-        <h2 className="profile-section-title">Student details</h2>
-        <div className="info-list">
-          <div className="info-row">
-            <span>University</span>
-            <strong>{student.university}</strong>
-          </div>
-          <div className="info-row">
-            <span>College</span>
-            <strong>{student.college}</strong>
-          </div>
-          <div className="info-row">
-            <span>BU email</span>
-            <strong>{student.email}</strong>
-          </div>
-          <div className="info-row">
-            <span>Clinical area</span>
-            <strong>{student.duty.clinicalArea}</strong>
-          </div>
         </div>
       </section>
 
@@ -110,18 +84,12 @@ export default function ProfilePage() {
             </span>
             <span className="profile-link__text">
               Settings
-              <small>Attendance preferences and demo data</small>
+              <small>Attendance preferences</small>
             </span>
             <ChevronRight className="profile-link__chevron" size={17} aria-hidden="true" />
           </Link>
         </div>
       </section>
-
-      <DemoNotice>
-        <GraduationCap size={14} aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 4 }} />
-        This profile uses fictional student information for the NARSync prototype. It
-        is not connected to the university records system.
-      </DemoNotice>
 
       <div className="profile-signout">
         <Button
@@ -139,7 +107,7 @@ export default function ProfilePage() {
         onClose={() => setSignOutOpen(false)}
         onConfirm={handleSignOut}
         title="Sign out of NARSync?"
-        description="Your current demo session state will be cleared from the app. You can sign back in with the same demo account."
+        description="Your current session state will be cleared from the app. You can sign back in with the same account."
         confirmLabel="Sign out"
         tone="danger"
         icon={LogOut}

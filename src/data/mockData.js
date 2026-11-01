@@ -1,8 +1,7 @@
 import { dateKey } from '../utils/format'
 
 /**
- * Prototype-only credentials. There is no authentication server in this phase.
- * The account and all student details below are fictional.
+ * Local credentials. There is no authentication server in this phase.
  */
 export const DEMO_CREDENTIALS = {
   studentId: '2022-10345',
@@ -23,15 +22,10 @@ const dutyDate = dateKey()
 
 export const mockStudent = {
   id: DEMO_CREDENTIALS.studentId,
-  name: 'Arjay V. Begino',
-  firstName: 'Arjay',
-  initials: 'Jay',
-  email: 'arjaybegino@bup.edu.ph',
+  initials: 'ST',
   program: 'Bachelor of Science in Nursing',
   yearLevel: '3rd Year',
-  section: 'BSN 3 – Block A'  ,
-  university: 'Bicol University Polangui',
-  college: 'Bicol University Polangui',
+  section: 'BSN 3 – Block A',
   group: {
     name: 'RLE Group 4',
     code: 'BUP-RLE-04',
@@ -112,14 +106,14 @@ function evidence(daysAgo, hours, minutes) {
     accuracy: simulatedLocation.accuracy,
     available: true,
     simulated: true,
-    photoLabel: 'Demo group photo',
+    photoLabel: 'Group photo',
   }
 }
 
 function historyRecord({ daysAgo, timeIn, timeOut, note }) {
   const date = dateKey(localDate(daysAgo))
   return {
-    id: `demo-att-${date}`,
+    id: `att-${date}`,
     date,
     duty: {
       group: mockStudent.group.name,
@@ -133,7 +127,7 @@ function historyRecord({ daysAgo, timeIn, timeOut, note }) {
   }
 }
 
-/** Sample history. Every record is synthetic and only lives in React state. */
+/** Initial history. Records only live in React state. */
 export function buildInitialRecords() {
   const records = [
     historyRecord({ daysAgo: 1, timeIn: [6, 48], timeOut: [15, 6] }),

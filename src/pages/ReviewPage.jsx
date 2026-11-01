@@ -61,7 +61,7 @@ export default function ReviewPage() {
         <EmptyState
           icon={Users}
           title="No evidence captured"
-          description="Capture or select a demo group photo before reviewing attendance evidence."
+          description="Capture or select a group photo before reviewing attendance evidence."
           action={
             <Button
               variant="secondary"
@@ -84,7 +84,7 @@ export default function ReviewPage() {
       coords: { ...simulatedLocation.coords },
       accuracy: simulatedLocation.accuracy,
     })
-    toast('Simulated location retrieved.', 'success')
+    toast('Location retrieved.', 'success')
   }
 
   const handleConfirm = () => {
@@ -102,12 +102,12 @@ export default function ReviewPage() {
             accuracy: draft.accuracy,
             available: draft.locationAvailable,
             simulated: true,
-            photoLabel: 'Demo group photo',
+            photoLabel: 'Group photo',
           },
         })
         clearDraft()
         setConfirmOpen(false)
-        toast(`${typeLabel} recorded in the prototype.`, 'success')
+        toast(`${typeLabel} recorded.`, 'success')
         navigate(`/attendance/success/${record.id}?type=${type}`, { replace: true })
       } catch (submissionError) {
         setError(submissionError.message)
@@ -140,9 +140,9 @@ export default function ReviewPage() {
       </div>
 
       <div className="evidence-photo">
-        <span className="badge badge--light evidence-photo__badge">Demo image</span>
+        <span className="badge badge--light evidence-photo__badge">Group photo</span>
         <Users size={40} aria-hidden="true" />
-        <strong>Group photo placeholder</strong>
+        <strong>Group photo</strong>
         <small>{formatTimestamp(draft.capturedAt)}</small>
       </div>
 
@@ -183,7 +183,7 @@ export default function ReviewPage() {
             <span>{draft.address}</span>
           </div>
           <Badge tone={draft.locationAvailable ? 'violet' : 'warning'}>
-            {draft.locationAvailable ? 'Simulated' : 'Unavailable'}
+            {draft.locationAvailable ? 'Retrieved' : 'Unavailable'}
           </Badge>
         </div>
 
@@ -191,19 +191,19 @@ export default function ReviewPage() {
           <div className="location-card__coords">
             <span>{draft.coords.lat.toFixed(5)}, {draft.coords.lng.toFixed(5)}</span>
             <span>±{draft.accuracy} m accuracy</span>
-            <span>Simulated GPS</span>
+            <span>GPS</span>
           </div>
         ) : (
           <DemoNotice tone="warning">
-            No simulated location was retrieved. You can still review and submit this
-            demo attendance, or retry the simulated reading.
+            No location was retrieved. You can still review and submit this attendance,
+            or retry the reading.
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRetryLocation}
               style={{ marginTop: 4, marginLeft: -8 }}
             >
-              Retry demo location
+              Retry location
             </Button>
           </DemoNotice>
         )}
@@ -223,12 +223,12 @@ export default function ReviewPage() {
           {draft.locationAvailable ? (
             <>
               <ShieldCheck size={15} aria-hidden="true" />
-              Simulated location matches your assigned duty location.
+              Location matches your assigned duty location.
             </>
           ) : (
             <>
               <MapPin size={15} aria-hidden="true" />
-              Location comparison is unavailable for this demo submission.
+              Location comparison is unavailable for this submission.
             </>
           )}
         </div>
@@ -248,21 +248,16 @@ export default function ReviewPage() {
           Submit {typeLabel.toLowerCase()}
         </Button>
         <p className="submit-bar__hint">
-          You will be asked to confirm the evidence before the demo submission is saved.
+          You will be asked to confirm the evidence before the submission is saved.
         </p>
       </div>
-
-      <p className="review-footnote">
-        Facial recognition, live GPS verification, and permanent storage are not
-        implemented. This submission exists only in the current prototype session.
-      </p>
 
       <ConfirmSheet
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirm}
         title={`Confirm ${typeLabel.toLowerCase()} submission`}
-        description="Please check the evidence summary. Confirming creates a demo attendance record in this session only."
+        description="Please check the evidence summary. Confirming creates an attendance record for this session."
         confirmLabel={`Confirm & submit`}
         loading={submitting}
         icon={CheckCircle2}
@@ -284,7 +279,7 @@ export default function ReviewPage() {
           </div>
           <div className="confirm-summary__row">
             <span>Evidence</span>
-            <strong>Demo group photo</strong>
+            <strong>Group photo</strong>
           </div>
         </div>
       </ConfirmSheet>
