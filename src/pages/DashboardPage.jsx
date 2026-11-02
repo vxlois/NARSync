@@ -112,7 +112,7 @@ export default function DashboardPage() {
       <header className="dashboard-head">
         <div className="dashboard-head__copy">
           <p className="eyebrow">{greeting()}</p>
-          <h1>Welcome back</h1>
+          <h1>LOIS LAIN</h1>
           <p className="dashboard-head__sub">
             {student.section}
           </p>
@@ -129,9 +129,6 @@ export default function DashboardPage() {
           <h2 className="section__title" id="notifications-title">
             Notifications
           </h2>
-          <span className="count-pill">
-            {notifications.length} {notifications.length === 1 ? 'item' : 'items'}
-          </span>
         </div>
 
         {notifications.length > 0 ? (

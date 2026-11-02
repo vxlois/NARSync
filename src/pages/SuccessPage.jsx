@@ -75,7 +75,7 @@ export default function SuccessPage() {
           </div>
           <div className="review-row">
             <dt>Assigned location</dt>
-            <dd>{student.duty.facility}</dd>
+            <dd>{record.duty?.facility || student.duty.facility}</dd>
           </div>
           <div className="review-row">
             <dt>Evidence</dt>

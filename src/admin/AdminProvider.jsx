@@ -1,12 +1,22 @@
 import { useCallback, useMemo, useState } from 'react'
 import { AdminContext } from './AdminContext'
 import {
+  ADMIN_ROLE_STORAGE_KEY,
   buildInitialAdminData,
   isScheduleComplete,
   ROLE_DEFINITIONS,
 } from './adminData'
 
 const initialData = buildInitialAdminData()
+
+function readStoredRole() {
+  try {
+    const storedRole = window.sessionStorage.getItem(ADMIN_ROLE_STORAGE_KEY)
+    return ROLE_DEFINITIONS[storedRole] ? storedRole : 'coordinator'
+  } catch {
+    return 'coordinator'
+  }
+}
 
 function reconcileMemberships({ students, groups, targetGroupId, memberIds }) {
   const uniqueMembers = [...new Set(memberIds)]
@@ -37,7 +47,7 @@ function reconcileMemberships({ students, groups, targetGroupId, memberIds }) {
 }
 
 export default function AdminProvider({ children }) {
-  const [role, setRole] = useState('coordinator')
+  const [role, setRoleState] = useState(readStoredRole)
   const [students, setStudents] = useState(initialData.students)
   const [groups, setGroups] = useState(initialData.groups)
   const [schedules, setSchedules] = useState(initialData.schedules)
@@ -45,6 +55,16 @@ export default function AdminProvider({ children }) {
   const [records, setRecords] = useState(initialData.records)
   const [notifications, setNotifications] = useState(initialData.notifications)
   const [settings, setSettings] = useState(initialData.settings)
+
+  const setRole = useCallback((nextRole) => {
+    if (!ROLE_DEFINITIONS[nextRole]) return
+    setRoleState(nextRole)
+    try {
+      window.sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, nextRole)
+    } catch {
+      // Session storage is optional; the in-memory role still updates.
+    }
+  }, [])
 
   const canManage = role === 'coordinator'
   const currentUser = ROLE_DEFINITIONS[role]
@@ -279,6 +299,7 @@ export default function AdminProvider({ children }) {
     }),
     [
       role,
+      setRole,
       currentUser,
       canManage,
       students,

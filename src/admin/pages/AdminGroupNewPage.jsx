@@ -155,7 +155,7 @@ export default function AdminGroupNewPage() {
                   type="text"
                   value={form.clinicalArea}
                   onChange={(event) => update('clinicalArea', event.target.value)}
-                  placeholder="e.g. Community Health Nursing"
+                  placeholder="e.g. Medical-Surgical Nursing"
                   disabled={!canManage}
                 />
               </label>

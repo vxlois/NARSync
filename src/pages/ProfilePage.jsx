@@ -41,11 +41,13 @@ export default function ProfilePage() {
 
       <section className="profile-card">
         <span className="profile-avatar" aria-hidden="true">{student.initials}</span>
+        <h2>{student.name}</h2>
+        <p className="profile-card__email">{student.email}</p>
         <p className="profile-card__id">Student ID {student.id}</p>
         <p className="profile-card__program">
           {student.program}
           <br />
-          {student.yearLevel} · {student.section}
+          {student.yearLevel} – {student.block}
         </p>
         <div className="profile-card__badges">
           <Badge tone="violet">{student.group.name}</Badge>

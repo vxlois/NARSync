@@ -1,29 +1,31 @@
 import { dateKey, minutesSinceMidnight, parseDateKey } from '../utils/format'
 
 /** Fictional staff accounts used to preview role-based access. */
+export const ADMIN_ROLE_STORAGE_KEY = 'narsync-admin-role'
+
 export const ROLE_DEFINITIONS = {
   coordinator: {
     id: 'coordinator',
     label: 'RLE Coordinator',
     shortLabel: 'Coordinator',
-    name: 'Ms. Andrea L. Perez, RN',
-    email: 'andrea.perez@bup.edu.ph',
-    initials: 'AP',
+    name: 'Mr. Bryan Bejer, MAN',
+    email: 'bryan.bejer@bup.edu.ph',
+    initials: 'BB',
     scope: 'Full management access',
   },
   departmentHead: {
     id: 'departmentHead',
     label: 'Department Head',
     shortLabel: 'Department Head',
-    name: 'Dr. Ramon B. Villafuerte, RN',
-    email: 'ramon.villafuerte@bup.edu.ph',
-    initials: 'RV',
+    name: 'Atty. Artemio Jerome S. Rivera Jr., PhD',
+    email: 'artemio.rivera@bup.edu.ph',
+    initials: 'AR',
     scope: 'Oversight and view-only access',
   },
 }
 
 export const INSTRUCTORS = [
-  'Ms. Andrea L. Perez, RN',
+  'Mr. Bryan Bejer, MAN',
   'Mr. Jerome C. Salazar, RN',
   'Ms. Charlene D. Aquino, RN',
   'Mr. Dennis R. Baldemor, RN',
@@ -32,9 +34,9 @@ export const INSTRUCTORS = [
 export const YEAR_LEVELS = ['2nd Year', '3rd Year', '4th Year']
 
 const GROUP_LOCATION = {
-  'grp-01': 'loc-rhu',
-  'grp-02': 'loc-libon',
-  'grp-03': 'loc-oas',
+  'grp-01': 'loc-jbdaph',
+  'grp-02': 'loc-ziga',
+  'grp-03': 'loc-jbdaph',
 }
 
 const STUDENT_SEED = [
@@ -306,13 +308,14 @@ const GROUP_SEED = [
     name: 'RLE Group 1',
     yearLevel: '3rd Year',
     block: 'Block A',
-    clinicalArea: 'Community Health Nursing',
-    instructor: 'Ms. Andrea L. Perez, RN',
+    clinicalArea: 'Medical-Surgical Nursing',
+    instructor: 'Mr. Bryan Bejer, MAN',
     status: 'Active',
     memberIds: STUDENT_SEED.filter((student) => student.groupId === 'grp-01').map(
       (student) => student.id,
     ),
-    notes: 'Community health rotation at the Polangui Rural Health Unit.',
+    notes:
+      'Medical-surgical rotation at the Josefina Belmonte Duran Albay Provincial Hospital (JBDAPH).',
   },
   {
     id: 'grp-02',
@@ -325,7 +328,8 @@ const GROUP_SEED = [
     memberIds: STUDENT_SEED.filter((student) => student.groupId === 'grp-02').map(
       (student) => student.id,
     ),
-    notes: 'Maternal and child health rotation at Libon Birthing Home.',
+    notes:
+      'Maternal and child health rotation at the Dr. Lorenzo P. Ziga Memorial District Hospital.',
   },
   {
     id: 'grp-03',
@@ -338,54 +342,33 @@ const GROUP_SEED = [
     memberIds: STUDENT_SEED.filter((student) => student.groupId === 'grp-03').map(
       (student) => student.id,
     ),
-    notes: 'Foundational clinical rotation at the Oas Community Health Center.',
+    notes:
+      'Foundational clinical rotation at the Josefina Belmonte Duran Albay Provincial Hospital (JBDAPH).',
   },
 ]
 
 const LOCATION_SEED = [
   {
-    id: 'loc-rhu',
-    name: 'Polangui Rural Health Unit',
-    address: 'Barangay Poblacion, Polangui, Albay',
+    id: 'loc-jbdaph',
+    name: 'Josefina Belmonte Duran Albay Provincial Hospital (JBDAPH)',
+    address: 'Barangay Tuburan, Ligao City, Albay',
     description:
-      'Municipal rural health unit used for community health nursing rotations. The main entrance is on the east side of the compound.',
-    coords: { lat: 13.2918, lng: 123.4856 },
+      'Provincial hospital used for medical-surgical and community health nursing rotations.',
+    coords: { lat: 13.2404, lng: 123.5355 },
     radius: 120,
     status: 'Active',
     contact: '(052) 555-0148',
   },
   {
-    id: 'loc-libon',
-    name: 'Libon Birthing Home',
-    address: 'Barangay San Jose, Libon, Albay',
+    id: 'loc-ziga',
+    name: 'Dr. Lorenzo P. Ziga Memorial District Hospital',
+    address: 'Barangay San Juan, Tabaco City, Albay',
     description:
-      'Birthing home and maternal care facility for supervised maternal and child nursing duties.',
-    coords: { lat: 13.2993, lng: 123.4374 },
-    radius: 100,
+      'District hospital for supervised maternal, child, and medical-surgical nursing duties.',
+    coords: { lat: 13.3586, lng: 123.7337 },
+    radius: 120,
     status: 'Active',
     contact: '(052) 555-0182',
-  },
-  {
-    id: 'loc-oas',
-    name: 'Oas Community Health Center',
-    address: 'Barangay Iraya, Oas, Albay',
-    description:
-      'Community health center with an outpatient clinic, prenatal room, and a small demonstration area.',
-    coords: { lat: 13.2554, lng: 123.3956 },
-    radius: 150,
-    status: 'Active',
-    contact: '(052) 555-0219',
-  },
-  {
-    id: 'loc-ligao',
-    name: 'Ligao City Health Office',
-    address: 'Barangay Dunao, Ligao City, Albay',
-    description:
-      'City health office reserved for scheduled outreach activities. Geofence is configured around the annex building.',
-    coords: { lat: 13.2404, lng: 123.5355 },
-    radius: 100,
-    status: 'Inactive',
-    contact: '(052) 555-0275',
   },
   {
     id: 'loc-skills',
@@ -532,7 +515,7 @@ function buildSchedules(groups) {
     scheduleRecord({
       id: 'sch-today-01',
       group: groupById['grp-01'],
-      locationId: 'loc-rhu',
+      locationId: 'loc-jbdaph',
       dateOffset: 0,
       startTime: '07:00',
       endTime: '15:00',
@@ -542,7 +525,7 @@ function buildSchedules(groups) {
     scheduleRecord({
       id: 'sch-today-02',
       group: groupById['grp-02'],
-      locationId: 'loc-libon',
+      locationId: 'loc-ziga',
       dateOffset: 0,
       startTime: '07:00',
       endTime: '15:00',
@@ -552,7 +535,7 @@ function buildSchedules(groups) {
     scheduleRecord({
       id: 'sch-up-01',
       group: groupById['grp-03'],
-      locationId: 'loc-oas',
+      locationId: 'loc-jbdaph',
       dateOffset: 1,
       startTime: '08:00',
       endTime: '16:00',
@@ -567,14 +550,14 @@ function buildSchedules(groups) {
       startTime: '07:00',
       endTime: '12:00',
       status: 'Ready',
-      instructor: 'Ms. Andrea L. Perez, RN',
+      instructor: 'Mr. Bryan Bejer, MAN',
       notes: 'Return demonstration and skills validation.',
       createdAtOffset: -1,
     }),
     scheduleRecord({
       id: 'sch-up-03',
       group: groupById['grp-02'],
-      locationId: 'loc-oas',
+      locationId: 'loc-ziga',
       dateOffset: 3,
       startTime: '07:00',
       endTime: '15:00',
@@ -590,14 +573,14 @@ function buildSchedules(groups) {
         startTime: '08:00',
         endTime: '',
         status: 'Draft',
-        notes: 'Awaiting confirmation from the health center.',
+        notes: 'Awaiting confirmation from the assigned hospital.',
         createdAtOffset: 0,
       }),
     },
     scheduleRecord({
       id: 'sch-draft-02',
       group: groupById['grp-01'],
-      locationId: 'loc-ligao',
+      locationId: 'loc-jbdaph',
       dateOffset: 5,
       startTime: '07:00',
       endTime: '15:00',
@@ -663,7 +646,7 @@ function flagFor({ offset, outcome, memberIndex, student, schedule, location, lo
     raisedAt: isoAt(offset, 15, 22),
     raisedBy: isFaceIssue ? 'Facial verification check' : 'Geofence check',
     resolvedAt: isOpen ? null : isoAt(offset - 1, 9, 40),
-    resolvedBy: isOpen ? null : 'Ms. Andrea L. Perez, RN',
+    resolvedBy: isOpen ? null : 'Mr. Bryan Bejer, MAN',
     resolution: isOpen
       ? ''
       : isFaceIssue
@@ -845,7 +828,7 @@ export function buildInitialAdminData() {
       {
         id: 'ntf-schedule',
         title: 'Duty schedule needs attention',
-        body: 'RLE Group 3 · Oas Community Health Center is missing a location and end time.',
+        body: 'RLE Group 3 is missing a duty location and end time.',
         at: isoAt(-1, 16, 42),
         read: false,
         href: '/admin/schedules',

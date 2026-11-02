@@ -43,7 +43,7 @@ export default function DutyDetailsPage() {
           <Badge tone="violet">{group.name}</Badge>
         </div>
         <p className="eyebrow" style={{ marginTop: 12 }}>
-          Community Health Nursing
+          {duty.clinicalArea}
         </p>
         <h2>{duty.facility}</h2>
         <p className="assignment-hero__address">
@@ -102,7 +102,7 @@ export default function DutyDetailsPage() {
               <UserCheck size={17} />
             </span>
             <div className="detail-row__text">
-              <span className="detail-row__label">Clinical preceptor</span>
+              <span className="detail-row__label">Clinical Instructor</span>
               <span className="detail-row__value">{duty.preceptor}</span>
             </div>
           </div>

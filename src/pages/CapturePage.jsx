@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Camera,
   CheckCircle2,
@@ -17,16 +17,17 @@ import Button from '../components/ui/Button'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
-import { simulatedLocation } from '../data/mockData'
+import { getGroupLocation } from '../data/mockData'
 import { formatTimestamp } from '../utils/format'
 
 const VALID_TYPES = ['time-in', 'time-out']
 
 export default function CapturePage() {
   const { type } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { student, todayRecord, setDraft } = useApp()
+  const { student, getTodayRecord, setDraft, faceCompleted } = useApp()
 
   const [captured, setCaptured] = useState(false)
   const [capturedAt, setCapturedAt] = useState(null)
@@ -39,8 +40,14 @@ export default function CapturePage() {
 
   const isValidType = VALID_TYPES.includes(type)
   const isTimeOut = type === 'time-out'
-  const alreadyTimedIn = Boolean(todayRecord?.timeIn)
-  const alreadyTimedOut = Boolean(todayRecord?.timeOut)
+  const groupId = searchParams.get('group') || student.group.id
+  const group = student.groups.find((item) => item.id === groupId) ?? null
+  const groupRecord = group ? getTodayRecord(group.id) : null
+  const alreadyTimedIn = Boolean(groupRecord?.timeIn)
+  const alreadyTimedOut = Boolean(groupRecord?.timeOut)
+  const hasValidSchedule = Boolean(group?.session?.valid)
+  const retrievedLocation = group ? getGroupLocation(group) : null
+  const attendancePath = group ? `/attendance?group=${group.id}` : '/attendance'
 
   useEffect(() => {
     return () => {
@@ -72,6 +79,29 @@ export default function CapturePage() {
       return {
         title: 'Attendance type not found',
         description: 'This capture link is not valid. Return to attendance to start again.',
+      }
+    }
+    if (!group) {
+      return {
+        title: 'Group not available',
+        description:
+          'Attendance can only be accessed and submitted for your assigned RLE groups.',
+      }
+    }
+    if (!faceCompleted) {
+      return {
+        title: 'Facial registration required',
+        description:
+          'Complete your facial registration before submitting attendance. Time In and Time Out stay locked until facial registration is complete.',
+        actionLabel: 'Open facial registration',
+        actionTo: '/face-registration',
+      }
+    }
+    if (!hasValidSchedule) {
+      return {
+        title: 'No valid duty schedule',
+        description:
+          'Attendance can only be submitted when your assigned RLE group has a valid duty schedule for today.',
       }
     }
     if (type === 'time-in' && alreadyTimedIn) {
@@ -124,18 +154,20 @@ export default function CapturePage() {
 
     setDraft({
       type,
+      groupId: group.id,
+      groupName: group.name,
       capturedAt,
       method: captureMethod === 'image' ? 'Image selection' : 'Camera capture',
       locationAvailable: available,
-      locationName: available ? simulatedLocation.name : 'Location unavailable',
+      locationName: available ? retrievedLocation.name : 'Location unavailable',
       address: available
-        ? simulatedLocation.address
+        ? retrievedLocation.address
         : 'No location was retrieved.',
-      coords: available ? { ...simulatedLocation.coords } : null,
-      accuracy: available ? simulatedLocation.accuracy : null,
+      coords: available ? { ...retrievedLocation.coords } : null,
+      accuracy: available ? retrievedLocation.accuracy : null,
     })
 
-    navigate(`/attendance/${type}/review`)
+    navigate(`/attendance/${type}/review?group=${group.id}`)
   }
 
   if (blockedReason) {
@@ -144,7 +176,7 @@ export default function CapturePage() {
         <PageHeader
           title={isTimeOut ? 'Time out' : 'Time in'}
           eyebrow="Attendance capture"
-          backTo="/attendance"
+          backTo={attendancePath}
           backLabel="Back to attendance"
         />
         <EmptyState
@@ -152,8 +184,11 @@ export default function CapturePage() {
           title={blockedReason.title}
           description={blockedReason.description}
           action={
-            <Button variant="secondary" onClick={() => navigate('/attendance')}>
-              Back to attendance
+            <Button
+              variant="secondary"
+              onClick={() => navigate(blockedReason.actionTo || attendancePath)}
+            >
+              {blockedReason.actionLabel || 'Back to attendance'}
             </Button>
           }
         />
@@ -167,8 +202,8 @@ export default function CapturePage() {
     <div className="screen">
       <PageHeader
         title={`${typeLabel} capture`}
-        eyebrow="Attendance evidence"
-        backTo="/attendance"
+        eyebrow={group ? `${group.name} · Attendance evidence` : 'Attendance evidence'}
+        backTo={attendancePath}
         backLabel="Back to attendance"
       />
 
@@ -273,8 +308,8 @@ export default function CapturePage() {
             )}
             {locationState === 'ready' && (
               <>
-                <span className="location-card__name">{simulatedLocation.name}</span>
-                <span className="location-card__address">{simulatedLocation.address}</span>
+                <span className="location-card__name">{retrievedLocation.name}</span>
+                <span className="location-card__address">{retrievedLocation.address}</span>
               </>
             )}
             {locationState === 'unavailable' && (
@@ -293,8 +328,8 @@ export default function CapturePage() {
 
         {locationState === 'ready' && (
           <div className="location-card__coords">
-            <span>{simulatedLocation.coords.lat.toFixed(5)}, {simulatedLocation.coords.lng.toFixed(5)}</span>
-            <span>±{simulatedLocation.accuracy} m accuracy</span>
+            <span>{retrievedLocation.coords.lat.toFixed(5)}, {retrievedLocation.coords.lng.toFixed(5)}</span>
+            <span>±{retrievedLocation.accuracy} m accuracy</span>
           </div>
         )}
 
@@ -304,14 +339,14 @@ export default function CapturePage() {
           {locationState === 'ready' ? (
             <>
               <ShieldCheck size={15} aria-hidden="true" />
-              Matches your assigned duty location · {student.duty.facility}
+              Matches your assigned duty location · {group.session.facility}
             </>
           ) : (
             <>
               <MapPin size={15} aria-hidden="true" />
               {locationState === 'loading'
                 ? 'Waiting for the location check…'
-                : `Could not compare with ${student.duty.facility}. You may still review the evidence.`}
+                : `Could not compare with ${group.session.facility}. You may still review the evidence.`}
             </>
           )}
         </div>

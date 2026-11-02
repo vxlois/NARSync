@@ -1,12 +1,19 @@
 import {
   ArrowRight,
+  Check,
   Eye,
   EyeOff,
+  GraduationCap,
   LockKeyhole,
+  ShieldCheck,
   UserRound,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import {
+  ADMIN_ROLE_STORAGE_KEY,
+  ROLE_DEFINITIONS,
+} from '../admin/adminData'
 import NursingStudentsIllustration from '../components/NursingStudentsIllustration'
 import Button from '../components/ui/Button'
 import TextField from '../components/ui/TextField'
@@ -47,6 +54,8 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const { login } = useApp()
   const { toast } = useToast()
+  const [mode, setMode] = useState('student')
+  const [staffRole, setStaffRole] = useState('coordinator')
   const [studentId, setStudentId] = useState(DEMO_CREDENTIALS.studentId)
   const [password, setPassword] = useState(DEMO_CREDENTIALS.password)
   const [showPassword, setShowPassword] = useState(false)
@@ -60,6 +69,14 @@ export default function LoginPage() {
       if (timerRef.current) window.clearTimeout(timerRef.current)
     }
   }, [])
+
+  const switchMode = (nextMode) => {
+    if (timerRef.current) window.clearTimeout(timerRef.current)
+    setMode(nextMode)
+    setError('')
+    setLoading(false)
+    setGoogleLoading(false)
+  }
 
   const finishSignIn = (credentials, message) => {
     try {
@@ -102,6 +119,22 @@ export default function LoginPage() {
     }, 850)
   }
 
+  const handlePersonnelSignIn = () => {
+    setError('')
+    setLoading(true)
+
+    try {
+      window.sessionStorage.setItem(ADMIN_ROLE_STORAGE_KEY, staffRole)
+    } catch {
+      // Session storage is optional for the prototype login.
+    }
+
+    timerRef.current = window.setTimeout(() => {
+      toast(`Signed in as ${ROLE_DEFINITIONS[staffRole].label}.`, 'success')
+      navigate('/admin', { replace: true })
+    }, 850)
+  }
+
   return (
     <div className="login">
       <section className="login__hero">
@@ -123,70 +156,137 @@ export default function LoginPage() {
 
       <section className="login__sheet">
         <div className="login__sheet-head">
-          <h2>Welcome</h2>
-          <p>Log in to continue to your attendance dashboard.</p>
+          <h2>{mode === 'student' ? 'Welcome' : 'Authorized personnel'}</h2>
+          <p>
+            {mode === 'student'
+              ? 'Log in to continue to your attendance dashboard.'
+              : 'Sign in to open the RLE web dashboard.'}
+          </p>
         </div>
 
-        <form className="login__form" onSubmit={handleSubmit} noValidate>
-          <TextField
-            id="student-id"
-            label="Student ID"
-            icon={UserRound}
-            value={studentId}
-            onChange={(event) => setStudentId(event.target.value)}
-            placeholder="Enter student ID"
-            autoComplete="username"
-            inputMode="text"
-          />
-
-          <TextField
-            id="password"
-            label="Password"
-            icon={LockKeyhole}
-            type={showPassword ? 'text' : 'password'}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            placeholder="Enter password"
-            autoComplete="current-password"
-            error={error}
-            right={
-              <button
-                type="button"
-                className="input-action"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            }
-          />
-
-          <Button
-            type="submit"
-            block
-            loading={loading}
-            disabled={googleLoading}
-            iconRight={ArrowRight}
-          >
-            {loading ? 'Logging in…' : 'Log In'}
-          </Button>
-
-          <Button
+        <div className="login__modes" role="tablist" aria-label="Login type">
+          <button
             type="button"
-            variant="outline"
-            block
-            icon={GoogleIcon}
-            loading={googleLoading}
-            disabled={loading}
-            onClick={handleGoogleSignIn}
+            role="tab"
+            aria-selected={mode === 'student'}
+            className={`login-mode ${mode === 'student' ? 'is-active' : ''}`.trim()}
+            onClick={() => switchMode('student')}
           >
-            {googleLoading ? 'Connecting…' : 'Continue with Google'}
-          </Button>
-        </form>
+            <GraduationCap size={16} aria-hidden="true" />
+            Student
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'personnel'}
+            className={`login-mode ${mode === 'personnel' ? 'is-active' : ''}`.trim()}
+            onClick={() => switchMode('personnel')}
+          >
+            <ShieldCheck size={16} aria-hidden="true" />
+            Authorized Personnel
+          </button>
+        </div>
 
-        <p className="login__admin">
-          <Link to="/admin">Open the Coordinator / Department Head dashboard</Link>
-        </p>
+        {mode === 'student' ? (
+          <form className="login__form" onSubmit={handleSubmit} noValidate>
+            <TextField
+              id="student-id"
+              label="Student ID"
+              icon={UserRound}
+              value={studentId}
+              onChange={(event) => setStudentId(event.target.value)}
+              placeholder="Enter student ID"
+              autoComplete="username"
+              inputMode="text"
+            />
+
+            <TextField
+              id="password"
+              label="Password"
+              icon={LockKeyhole}
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Enter password"
+              autoComplete="current-password"
+              error={error}
+              right={
+                <button
+                  type="button"
+                  className="input-action"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              }
+            />
+
+            <Button
+              type="submit"
+              block
+              loading={loading}
+              disabled={googleLoading}
+              iconRight={ArrowRight}
+            >
+              {loading ? 'Logging in…' : 'Log In'}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              block
+              icon={GoogleIcon}
+              loading={googleLoading}
+              disabled={loading}
+              onClick={handleGoogleSignIn}
+            >
+              {googleLoading ? 'Connecting…' : 'Continue with Google'}
+            </Button>
+          </form>
+        ) : (
+          <div className="login__staff">
+            <div className="login__role-options" role="radiogroup" aria-label="Staff role">
+              {Object.values(ROLE_DEFINITIONS).map((roleOption) => {
+                const isSelected = staffRole === roleOption.id
+                return (
+                  <button
+                    type="button"
+                    key={roleOption.id}
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`login-role ${isSelected ? 'is-selected' : ''}`.trim()}
+                    onClick={() => setStaffRole(roleOption.id)}
+                  >
+                    <span className="login-role__icon" aria-hidden="true">
+                      <ShieldCheck size={16} />
+                    </span>
+                    <span className="login-role__text">
+                      <strong>{roleOption.label}</strong>
+                      <small>{roleOption.name}</small>
+                    </span>
+                    {isSelected && <Check size={16} aria-hidden="true" />}
+                  </button>
+                )
+              })}
+            </div>
+
+            <Button
+              type="button"
+              block
+              loading={loading}
+              iconRight={ArrowRight}
+              onClick={handlePersonnelSignIn}
+            >
+              {loading ? 'Opening dashboard…' : 'Continue to dashboard'}
+            </Button>
+
+            <p className="login__staff-note">
+              Authorized personnel are redirected to the web dashboard for the RLE
+              Coordinator and Department Head roles.
+            </p>
+          </div>
+        )}
 
         <p className="login__footer">Bicol University Polangui</p>
       </section>
