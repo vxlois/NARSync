@@ -11,7 +11,8 @@ export default function StudentSelector({
   onChange,
   disabled = false,
   targetGroupId = null,
-  emptyLabel = 'No students match your search.',
+  emptyLabel = 'No students found.',
+  showFaceStatus = true,
 }) {
   const [search, setSearch] = useState('')
   const selectedSet = new Set(selectedIds)
@@ -36,6 +37,21 @@ export default function StudentSelector({
     }
   }
 
+  const allVisibleSelected =
+    filtered.length > 0 && filtered.every((student) => selectedSet.has(student.id))
+
+  const toggleVisible = () => {
+    if (disabled) return
+    if (allVisibleSelected) {
+      const visibleIds = new Set(filtered.map((student) => student.id))
+      onChange(selectedIds.filter((id) => !visibleIds.has(id)))
+      return
+    }
+    const next = new Set(selectedIds)
+    filtered.forEach((student) => next.add(student.id))
+    onChange([...next])
+  }
+
   return (
     <div className="adm-student-selector">
       <div className="adm-student-selector__toolbar">
@@ -45,12 +61,23 @@ export default function StudentSelector({
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, student ID, or group"
+            placeholder="Search name, ID, or group"
             aria-label="Search students for group membership"
             disabled={disabled}
           />
         </label>
         <span className="adm-selector-count">{selectedIds.length} selected</span>
+        {filtered.length > 0 && (
+          <button
+            type="button"
+            className="adm-selector-toggle"
+            onClick={toggleVisible}
+            disabled={disabled}
+            title={allVisibleSelected ? 'Clear visible students' : 'Select all visible students'}
+          >
+            {allVisibleSelected ? 'Clear' : 'Select all'}
+          </button>
+        )}
       </div>
 
       <div className="adm-selector-list">
@@ -63,7 +90,7 @@ export default function StudentSelector({
             return (
               <label
                 key={student.id}
-                className={`adm-selector-row ${selected ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}`}
+                className={`adm-selector-row ${showFaceStatus ? '' : 'adm-selector-row--no-face'} ${selected ? 'is-selected' : ''} ${disabled ? 'is-disabled' : ''}`}
               >
                 <input
                   type="checkbox"
@@ -89,7 +116,7 @@ export default function StudentSelector({
                     <span>Unassigned</span>
                   )}
                 </span>
-                <StatusBadge tone={face.tone}>{face.label}</StatusBadge>
+                {showFaceStatus && <StatusBadge tone={face.tone}>{face.label}</StatusBadge>}
               </label>
             )
           })
@@ -98,8 +125,7 @@ export default function StudentSelector({
         )}
       </div>
       <p className="adm-fineprint">
-        A student can belong to one group at a time. Selecting a student who already belongs to
-        another group moves them when you save.
+        Students belong to one group at a time. Selecting someone from another group moves them on save.
       </p>
     </div>
   )

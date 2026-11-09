@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Building2,
   CheckCircle2,
@@ -23,6 +23,7 @@ const VALID_TYPES = ['time-in', 'time-out']
 
 export default function ReviewPage() {
   const { type } = useParams()
+  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { toast } = useToast()
   const {
@@ -47,15 +48,19 @@ export default function ReviewPage() {
   const isValidType = VALID_TYPES.includes(type)
   const isTimeOut = type === 'time-out'
   const typeLabel = isTimeOut ? 'Time out' : 'Time in'
-  const draftMatches = draft && draft.type === type
+  const groupId = searchParams.get('group') || draft?.groupId || student.group.id
+  const group = student.groups.find((item) => item.id === groupId) ?? null
+  const capturePath = `/attendance/${isValidType ? type : 'time-in'}/capture?group=${groupId}`
+  const draftMatches =
+    draft && draft.type === type && (!draft.groupId || draft.groupId === group?.id)
 
-  if (!isValidType || !draftMatches) {
+  if (!isValidType || !group || !draftMatches) {
     return (
       <div className="screen">
         <PageHeader
           title={`Review ${isTimeOut ? 'time out' : 'time in'}`}
           eyebrow="Attendance review"
-          backTo={`/attendance/${isValidType ? type : 'time-in'}/capture`}
+          backTo={capturePath}
           backLabel="Back to capture"
         />
         <EmptyState
@@ -65,7 +70,7 @@ export default function ReviewPage() {
           action={
             <Button
               variant="secondary"
-              onClick={() => navigate(`/attendance/${isValidType ? type : 'time-in'}/capture`)}
+              onClick={() => navigate(capturePath)}
             >
               Open camera capture
             </Button>
@@ -79,8 +84,8 @@ export default function ReviewPage() {
     setDraft({
       ...draft,
       locationAvailable: true,
-      locationName: simulatedLocation.name,
-      address: simulatedLocation.address,
+      locationName: group.session.facility,
+      address: group.session.address,
       coords: { ...simulatedLocation.coords },
       accuracy: simulatedLocation.accuracy,
     })
@@ -94,6 +99,7 @@ export default function ReviewPage() {
       try {
         const record = submitAttendance({
           type,
+          groupId: group.id,
           evidence: {
             at: draft.capturedAt,
             locationName: draft.locationName,
@@ -121,8 +127,8 @@ export default function ReviewPage() {
     <div className="screen">
       <PageHeader
         title={`Review ${typeLabel.toLowerCase()}`}
-        eyebrow="Attendance review"
-        backTo={`/attendance/${type}/capture`}
+        eyebrow={`${group.name} · Attendance review`}
+        backTo={`/attendance/${type}/capture?group=${group.id}`}
         backLabel="Back to capture"
       />
 
@@ -157,7 +163,7 @@ export default function ReviewPage() {
           </div>
           <div className="review-row">
             <dt>Duty date</dt>
-            <dd>{formatDateLong(student.duty.date)}</dd>
+            <dd>{formatDateLong(group.session.date)}</dd>
           </div>
           <div className="review-row">
             <dt>Captured at</dt>
@@ -169,7 +175,7 @@ export default function ReviewPage() {
           </div>
           <div className="review-row">
             <dt>RLE group</dt>
-            <dd>{student.group.name}</dd>
+            <dd>{group.name}</dd>
           </div>
         </dl>
       </Card>
@@ -214,8 +220,8 @@ export default function ReviewPage() {
           <Building2 size={17} aria-hidden="true" />
           <div className="review-location__titles">
             <p id="review-assigned-title">Assigned clinical duty location</p>
-            <strong>{student.duty.facility}</strong>
-            <span>{student.duty.address}</span>
+            <strong>{group.session.facility}</strong>
+            <span>{group.session.address}</span>
           </div>
           <Badge tone="neutral">Assigned</Badge>
         </div>

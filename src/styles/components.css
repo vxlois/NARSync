@@ -905,6 +905,46 @@
   font-size: 0.68rem;
 }
 
+.duty-card--selectable {
+  width: 100%;
+  border: 1px solid transparent;
+  font: inherit;
+  text-align: left;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.duty-card--selectable:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+}
+
+.duty-card--selectable.is-selected {
+  border-color: rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 0 0 2px var(--violet-600),
+    0 22px 40px -30px rgba(48, 32, 92, 0.95);
+}
+
+.duty-card--selectable .duty-card__eyebrow,
+.duty-card--selectable .duty-card__area {
+  display: block;
+}
+
+.duty-card__title {
+  display: block;
+  color: var(--white);
+  font-size: 1.04rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.22;
+}
+
+.group-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* Attendance actions */
 .attendance-actions {
   display: grid;

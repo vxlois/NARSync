@@ -36,10 +36,10 @@ const RECORD_STATUSES = [
   { value: 'flagged', label: 'Flagged' },
 ]
 const RECORD_VIEWS = [
-  { value: 'all', label: 'All submissions' },
-  { value: 'timed-in', label: 'Timed in (any)' },
-  { value: 'completed', label: 'Time in and out' },
-  { value: 'on-duty', label: 'On duty (no time out)' },
+  { value: 'all', label: 'All' },
+  { value: 'timed-in', label: 'Timed in' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'on-duty', label: 'On duty' },
 ]
 
 export default function AdminAttendancePage() {
@@ -92,9 +92,9 @@ export default function AdminAttendancePage() {
   }, [records, students, groups, locations, search, date, groupId, yearLevel, locationId, status, view])
 
   const pageRecords = filteredRecords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const completedCount = filteredRecords.filter((record) => record.timeIn && record.timeOut).length
-  const openFlagCount = filteredRecords.filter((record) => record.flag?.status === 'Open').length
-  const lateCount = filteredRecords.filter((record) => getRecordStatus(record).key === 'late').length
+  const completedCount = records.filter((record) => getRecordStatus(record).key === 'completed').length
+  const flaggedCount = records.filter((record) => record.flag?.status === 'Open').length
+  const lateCount = records.filter((record) => getRecordStatus(record).key === 'late').length
 
   const resetFilters = () => {
     setSearch('')
@@ -105,6 +105,34 @@ export default function AdminAttendancePage() {
     setStatus('all')
     setView('all')
   }
+
+  const applyQuickFilter = (filter) => {
+    resetFilters()
+    if (filter !== 'all') setStatus(filter)
+  }
+
+  const quickFilters = [
+    { key: 'all', label: 'All', count: records.length },
+    { key: 'completed', label: 'Completed', count: completedCount },
+    { key: 'late', label: 'Late', count: lateCount },
+    { key: 'flagged', label: 'Flagged', count: flaggedCount },
+  ]
+
+  const activeQuickFilter =
+    status === 'completed'
+      ? 'completed'
+      : status === 'late'
+        ? 'late'
+        : status === 'flagged'
+          ? 'flagged'
+          : !search.trim() &&
+              !date &&
+              groupId === 'all' &&
+              yearLevel === 'all' &&
+              locationId === 'all' &&
+              view === 'all'
+            ? 'all'
+            : ''
 
   const exportRecords = () => {
     downloadCsv(
@@ -134,14 +162,19 @@ export default function AdminAttendancePage() {
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Evidence ledger"
-        title="Attendance records"
         meta={
           <>
-            <span className="adm-meta-pill"><strong>{filteredRecords.length}</strong> records</span>
-            <span className="adm-meta-pill"><strong>{completedCount}</strong> completed</span>
-            <span className="adm-meta-pill"><strong>{lateCount}</strong> late</span>
-            <span className="adm-meta-pill"><strong>{openFlagCount}</strong> open flags</span>
+            {quickFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`adm-quick-filter ${activeQuickFilter === filter.key ? 'is-active' : ''}`}
+                onClick={() => applyQuickFilter(filter.key)}
+                aria-pressed={activeQuickFilter === filter.key}
+              >
+                <strong>{filter.count}</strong> {filter.label}
+              </button>
+            ))}
           </>
         }
         actions={
@@ -156,7 +189,7 @@ export default function AdminAttendancePage() {
         <div className="adm-filter-card__head">
           <span>
             <SlidersHorizontal size={15} aria-hidden="true" />
-            Search and filters
+            Filters
           </span>
           <button type="button" className="adm-text-btn" onClick={resetFilters}>
             <RotateCcw size={14} aria-hidden="true" />
@@ -170,12 +203,12 @@ export default function AdminAttendancePage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search student, ID, group, or location"
+              placeholder="Search student, group, or location"
               aria-label="Search attendance records"
             />
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Duty date</span>
+            <span>Date</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <label className="adm-field adm-field--inline">
@@ -214,7 +247,7 @@ export default function AdminAttendancePage() {
             </select>
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Quick view</span>
+            <span>View</span>
             <select value={view} onChange={(event) => setView(event.target.value)}>
               {RECORD_VIEWS.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>
@@ -227,8 +260,8 @@ export default function AdminAttendancePage() {
       <section className="adm-card adm-card--table">
         <div className="adm-table-head">
           <div>
-            <h3>Attendance ledger</h3>
-            <p>{filteredRecords.length} records match the current filters.</p>
+            <h3>Records</h3>
+            <p>{filteredRecords.length} shown</p>
           </div>
           <span className="adm-table-head__page">
             Page {page} of {Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))}
@@ -238,19 +271,13 @@ export default function AdminAttendancePage() {
         {pageRecords.length ? (
           <>
             <div className="adm-table-wrap">
-              <table className="adm-table">
+              <table className="adm-table adm-table--fit">
                 <thead>
                   <tr>
                     <th>Student</th>
-                    <th>Student ID</th>
                     <th>Group</th>
                     <th>Duty date</th>
-                    <th>Clinical location</th>
-                    <th>Time in</th>
-                    <th>Time out</th>
                     <th>Status</th>
-                    <th>Flag</th>
-                    <th className="adm-table__action">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -260,42 +287,44 @@ export default function AdminAttendancePage() {
                     const location = getLocationById(locations, record.locationId)
                     const recordStatus = getRecordStatus(record)
                     return (
-                      <tr key={record.id}>
+                      <tr
+                        key={record.id}
+                        className="adm-table__row--clickable"
+                        onClick={() => setSelectedRecord(record)}
+                      >
                         <td>
                           <div className="adm-person">
                             <Avatar name={student?.name || 'Unknown student'} size="sm" />
                             <div>
                               <strong>{student?.name || 'Unknown student'}</strong>
-                              <span>{student?.yearLevel}</span>
+                              <span>
+                                {record.studentId}
+                                {student?.yearLevel ? ` · ${student.yearLevel}` : ''}
+                              </span>
                             </div>
                           </div>
                         </td>
-                        <td className="adm-mono">{record.studentId}</td>
-                        <td>{group?.name || '—'}</td>
-                        <td>{formatDateMedium(record.date)}</td>
-                        <td>{location?.name || '—'}</td>
-                        <td className="adm-mono">{formatTime(record.timeIn)}</td>
-                        <td className="adm-mono">{formatTime(record.timeOut)}</td>
                         <td>
-                          <StatusBadge tone={recordStatus.tone}>{recordStatus.label}</StatusBadge>
+                          <div className="adm-cell-stack">
+                            <strong>{group?.name || 'No group'}</strong>
+                            <span className="adm-cell-sub">{location?.name || 'No location'}</span>
+                          </div>
                         </td>
                         <td>
-                          {record.flag ? (
-                            <StatusBadge tone={record.flag.status === 'Open' ? 'danger' : 'success'}>
-                              {record.flag.status}
-                            </StatusBadge>
-                          ) : (
-                            <span className="adm-muted">None</span>
-                          )}
+                          <div className="adm-cell-stack">
+                            <strong>{formatDateMedium(record.date)}</strong>
+                            <span className="adm-cell-sub adm-mono">
+                              {formatTime(record.timeIn)} · {formatTime(record.timeOut)}
+                            </span>
+                          </div>
                         </td>
-                        <td className="adm-table__action">
-                          <button
-                            type="button"
-                            className="adm-text-btn"
-                            onClick={() => setSelectedRecord(record)}
-                          >
-                            View
-                          </button>
+                        <td>
+                          <div className="adm-cell-stack">
+                            <StatusBadge tone={recordStatus.tone}>{recordStatus.label}</StatusBadge>
+                            <span className="adm-cell-sub">
+                              {record.flag ? `Flag ${record.flag.status.toLowerCase()}` : 'No flag'}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -313,12 +342,18 @@ export default function AdminAttendancePage() {
         ) : (
           <EmptyState
             icon={ClipboardList}
-            title="No attendance records found"
-            description="Adjust the search or filters to find a submission."
+            title="No records"
+            description={
+              records.length
+                ? 'Adjust the filters to see more.'
+                : 'Attendance records will appear here once students submit.'
+            }
             action={
-              <button type="button" className="adm-btn adm-btn--secondary" onClick={resetFilters}>
-                Clear filters
-              </button>
+              records.length ? (
+                <button type="button" className="adm-btn adm-btn--secondary" onClick={resetFilters}>
+                  Clear filters
+                </button>
+              ) : null
             }
           />
         )}
@@ -326,12 +361,7 @@ export default function AdminAttendancePage() {
 
       <Drawer
         open={Boolean(selectedRecord)}
-        title="Attendance record"
-        subtitle={
-          selectedRecord
-            ? `${getStudentById(students, selectedRecord.studentId)?.name} · ${formatDateMedium(selectedRecord.date)}`
-            : ''
-        }
+        title="Record"
         onClose={() => setSelectedRecord(null)}
         size="lg"
       >

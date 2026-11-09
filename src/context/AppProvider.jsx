@@ -24,9 +24,18 @@ export default function AppProvider({ children }) {
   const [draft, setDraft] = useState(null)
 
   const today = dateKey()
-  const todayRecord = useMemo(
-    () => records.find((record) => record.date === today) ?? null,
+  const getTodayRecord = useCallback(
+    (groupId = mockStudent.group.id) =>
+      records.find(
+        (record) =>
+          record.date === today &&
+          (record.groupId || mockStudent.group.id) === groupId,
+      ) ?? null,
     [records, today],
+  )
+  const todayRecord = useMemo(
+    () => getTodayRecord(mockStudent.group.id),
+    [getTodayRecord],
   )
 
   const faceCapturedCount = useMemo(
@@ -69,24 +78,37 @@ export default function AppProvider({ children }) {
   }, [])
 
   const submitAttendance = useCallback(
-    ({ type, evidence }) => {
+    ({ type, evidence, groupId = mockStudent.group.id }) => {
       if (type !== 'time-in' && type !== 'time-out') {
         throw new Error('Unknown attendance type.')
       }
 
+      const group = mockStudent.groups.find((item) => item.id === groupId)
+      if (!group) {
+        throw new Error(
+          'Attendance can only be submitted for your assigned RLE groups.',
+        )
+      }
+      if (!group.session.valid) {
+        throw new Error('This group does not have a valid duty schedule for today.')
+      }
+
+      const groupRecord = getTodayRecord(group.id)
+
       if (type === 'time-in') {
-        if (todayRecord?.timeIn) {
-          throw new Error('A time in record already exists for today.')
+        if (groupRecord?.timeIn) {
+          throw new Error('A time in record already exists for this group today.')
         }
 
         const record = {
-          id: `att-${today}-${Date.now()}`,
+          id: `att-${today}-${group.id}-${Date.now()}`,
           date: today,
+          groupId: group.id,
           duty: {
-            group: mockStudent.group.name,
-            clinicalArea: mockStudent.duty.clinicalArea,
-            facility: mockStudent.duty.facility,
-            shift: mockStudent.duty.shift,
+            group: group.name,
+            clinicalArea: group.clinicalArea,
+            facility: group.session.facility,
+            shift: group.session.shift,
           },
           timeIn: evidence,
           timeOut: null,
@@ -95,25 +117,28 @@ export default function AppProvider({ children }) {
 
         setRecords((current) => [
           record,
-          ...current.filter((item) => item.date !== today),
+          ...current.filter(
+            (item) =>
+              !(item.date === today && (item.groupId || mockStudent.group.id) === group.id),
+          ),
         ])
         return record
       }
 
-      if (!todayRecord?.timeIn) {
+      if (!groupRecord?.timeIn) {
         throw new Error('A valid time in is required before you can time out.')
       }
-      if (todayRecord.timeOut) {
-        throw new Error('A time out record already exists for today.')
+      if (groupRecord.timeOut) {
+        throw new Error('A time out record already exists for this group today.')
       }
 
-      const updated = { ...todayRecord, timeOut: evidence }
+      const updated = { ...groupRecord, timeOut: evidence }
       setRecords((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       )
       return updated
     },
-    [today, todayRecord],
+    [getTodayRecord, today],
   )
 
   const updateSetting = useCallback((key, value) => {
@@ -134,6 +159,7 @@ export default function AppProvider({ children }) {
       student: mockStudent,
       records,
       todayRecord,
+      getTodayRecord,
       hasTimedIn: Boolean(todayRecord?.timeIn),
       hasTimedOut: Boolean(todayRecord?.timeOut),
       faceViews,
@@ -157,6 +183,7 @@ export default function AppProvider({ children }) {
       isAuthenticated,
       records,
       todayRecord,
+      getTodayRecord,
       faceViews,
       faceCapturedCount,
       faceCompleted,

@@ -2,6 +2,7 @@ import {
   BarChart3,
   CalendarDays,
   ClipboardList,
+  Compass,
   Flag,
   LayoutDashboard,
   MapPin,
@@ -24,13 +25,13 @@ export const ADMIN_NAV = [
 
 export function getAdminPageMeta(pathname) {
   if (pathname === '/admin' || pathname === '/admin/') {
-    return { title: 'Dashboard', section: 'Administration' }
+    return { title: 'Dashboard', section: 'Administration', icon: LayoutDashboard }
   }
   if (pathname === '/admin/groups/new') {
-    return { title: 'Create group', section: 'Groups' }
+    return { title: 'Create group', section: 'Groups', icon: UsersRound }
   }
   if (pathname.startsWith('/admin/groups/')) {
-    return { title: 'Group details', section: 'Groups' }
+    return { title: 'Group details', section: 'Groups', icon: UsersRound }
   }
   const item = [...ADMIN_NAV]
     .sort((a, b) => b.to.length - a.to.length)
@@ -38,5 +39,6 @@ export function getAdminPageMeta(pathname) {
   return {
     title: item?.label || 'Administration',
     section: item ? 'Administration' : 'NARSync',
+    icon: item?.icon || Compass,
   }
 }

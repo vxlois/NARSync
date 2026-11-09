@@ -28,20 +28,34 @@ import ViewOnlyNotice from '../components/ViewOnlyNotice'
 
 const PAGE_SIZE = 10
 
+const SUGGESTED_NOTES = {
+  'Face match below threshold': [
+    'Identity confirmed against profile',
+    'Checked with clinical instructor',
+  ],
+  'Location outside geofence': [
+    'Alternate entrance confirmed',
+    'Location verified with clinical instructor',
+  ],
+}
+
 function FlagReviewDrawer({ record, onClose }) {
   const { canManage, resolveFlag } = useAdmin()
   const { toast } = useToast()
   const [resolution, setResolution] = useState('')
   const [error, setError] = useState('')
+  const isOpen = record.flag?.status === 'Open'
+  const canResolve = isOpen && canManage
+  const suggestions = SUGGESTED_NOTES[record.flag?.reason] || []
 
   const handleResolve = () => {
     if (!resolution.trim()) {
-      setError('Add a short resolution note before closing the flag.')
+      setError('Add a note before resolving.')
       return
     }
     try {
       resolveFlag(record.id, resolution)
-      toast('Flag resolved. The attendance record has been updated.', 'success')
+      toast('Flag resolved.', 'success')
       onClose()
     } catch (resolveError) {
       setError(resolveError.message)
@@ -51,52 +65,75 @@ function FlagReviewDrawer({ record, onClose }) {
   return (
     <Drawer
       open
-      title="Flagged record review"
-      subtitle={`${record.flag?.reason} · ${formatDateMedium(record.date)}`}
+      title={isOpen ? 'Review flag' : 'Flag details'}
       onClose={onClose}
       size="lg"
-    >
-      {!canManage && (
-        <ViewOnlyNotice message="Flagged records can be reviewed, but resolving flags is restricted to the RLE Coordinator." />
-      )}
-      <RecordDetailPanel record={record} />
-
-      {record.flag?.status === 'Open' && (
-        <section className="adm-detail-section">
-          <h4>
-            <ShieldCheck size={15} aria-hidden="true" /> Coordinator resolution
-          </h4>
-          <label className={`adm-field ${error ? 'has-error' : ''}`}>
-            <span>Resolution note *</span>
-            <textarea
-              rows={4}
-              value={resolution}
-              onChange={(event) => {
-                setResolution(event.target.value)
-                setError('')
-              }}
-              placeholder="Describe the verification step taken before accepting or dismissing this flag."
-              disabled={!canManage}
-            />
-            {error && <small className="adm-field__error">{error}</small>}
-          </label>
-          <div className="adm-form-actions">
+      footer={
+        canResolve ? (
+          <>
             <button type="button" className="adm-btn adm-btn--secondary" onClick={onClose}>
-              Close
+              Cancel
             </button>
             <button
               type="button"
               className="adm-btn adm-btn--primary"
               onClick={handleResolve}
-              disabled={!canManage}
-              title={!canManage ? 'Department Head access is view-only.' : undefined}
             >
               <CheckCircle2 size={16} aria-hidden="true" />
               Resolve flag
             </button>
-          </div>
-        </section>
+          </>
+        ) : (
+          <button type="button" className="adm-btn adm-btn--secondary" onClick={onClose}>
+            Close
+          </button>
+        )
+      }
+    >
+      {!canManage && (
+        <ViewOnlyNotice message="View only. Resolving flags is restricted to the RLE Coordinator." />
       )}
+      <RecordDetailPanel record={record} review>
+        {canResolve && (
+          <section className="adm-detail-section">
+            <h4>
+              <ShieldCheck size={15} aria-hidden="true" /> Resolution
+            </h4>
+            <p className="adm-resolution__hint">Add a short note on what you verified.</p>
+            <label className={`adm-field ${error ? 'has-error' : ''}`}>
+              <span>Resolution note *</span>
+              <textarea
+                rows={3}
+                value={resolution}
+                onChange={(event) => {
+                  setResolution(event.target.value)
+                  setError('')
+                }}
+                placeholder="What did you check?"
+              />
+              {error && <small className="adm-field__error">{error}</small>}
+            </label>
+            {suggestions.length > 0 && (
+              <div className="adm-note-chips">
+                <span>Suggested</span>
+                {suggestions.map((note) => (
+                  <button
+                    key={note}
+                    type="button"
+                    className="adm-note-chip"
+                    onClick={() => {
+                      setResolution(note)
+                      setError('')
+                    }}
+                  >
+                    {note}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </RecordDetailPanel>
     </Drawer>
   )
 }
@@ -149,12 +186,6 @@ export default function AdminFlaggedPage() {
   const pageRecords = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   const openCount = flagged.filter((record) => record.flag.status === 'Open').length
   const resolvedCount = flagged.filter((record) => record.flag.status === 'Resolved').length
-  const faceFlags = flagged.filter(
-    (record) => record.flag.reason === 'Face match below threshold' && record.flag.status === 'Open',
-  ).length
-  const locationFlags = flagged.filter(
-    (record) => record.flag.reason === 'Location outside geofence' && record.flag.status === 'Open',
-  ).length
 
   const resetFilters = () => {
     setSearch('')
@@ -164,30 +195,58 @@ export default function AdminFlaggedPage() {
     setDate('')
   }
 
+  const applyQuickFilter = (filter) => {
+    setSearch('')
+    setReason('all')
+    setGroupId('all')
+    setDate('')
+    setStatus(filter === 'open' ? 'Open' : filter === 'resolved' ? 'Resolved' : 'all')
+  }
+
+  const quickFilters = [
+    { key: 'all', label: 'All', count: flagged.length },
+    { key: 'open', label: 'Open', count: openCount },
+    { key: 'resolved', label: 'Resolved', count: resolvedCount },
+  ]
+
+  const activeQuickFilter =
+    status === 'Open'
+      ? 'open'
+      : status === 'Resolved'
+        ? 'resolved'
+        : !search.trim() && reason === 'all' && groupId === 'all' && !date
+          ? 'all'
+          : ''
+
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Verification queue"
-        title="Flagged records"
         meta={
           <>
-            <span className="adm-meta-pill"><strong>{openCount}</strong> open</span>
-            <span className="adm-meta-pill"><strong>{resolvedCount}</strong> resolved</span>
-            <span className="adm-meta-pill"><strong>{faceFlags}</strong> face match</span>
-            <span className="adm-meta-pill"><strong>{locationFlags}</strong> location</span>
+            {quickFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`adm-quick-filter ${activeQuickFilter === filter.key ? 'is-active' : ''}`}
+                onClick={() => applyQuickFilter(filter.key)}
+                aria-pressed={activeQuickFilter === filter.key}
+              >
+                <strong>{filter.count}</strong> {filter.label}
+              </button>
+            ))}
           </>
         }
       />
 
       {!canManage && (
-        <ViewOnlyNotice message="Flagged records can be reviewed, but resolutions are restricted to the RLE Coordinator." />
+        <ViewOnlyNotice message="View only. Flags can't be resolved." />
       )}
 
       <section className="adm-filter-card" aria-label="Flag filters">
         <div className="adm-filter-card__head">
           <span>
             <SlidersHorizontal size={15} aria-hidden="true" />
-            Search and filters
+            Filters
           </span>
           <button type="button" className="adm-text-btn" onClick={resetFilters}>
             <RotateCcw size={14} aria-hidden="true" />
@@ -201,12 +260,12 @@ export default function AdminFlaggedPage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search student, group, location, or flag detail"
+              placeholder="Search student, group, or location"
               aria-label="Search flagged records"
             />
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Review status</span>
+            <span>Status</span>
             <select value={status} onChange={(event) => setStatus(event.target.value)}>
               <option value="Open">Open</option>
               <option value="Resolved">Resolved</option>
@@ -214,7 +273,7 @@ export default function AdminFlaggedPage() {
             </select>
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Flag reason</span>
+            <span>Reason</span>
             <select value={reason} onChange={(event) => setReason(event.target.value)}>
               <option value="all">All reasons</option>
               {reasons.map((flagReason) => (
@@ -223,7 +282,7 @@ export default function AdminFlaggedPage() {
             </select>
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Duty date</span>
+            <span>Date</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
           <label className="adm-field adm-field--inline">
@@ -241,8 +300,8 @@ export default function AdminFlaggedPage() {
       <section className="adm-card adm-card--table">
         <div className="adm-table-head">
           <div>
-            <h3>Flag review queue</h3>
-            <p>{filtered.length} flagged records match the current filters.</p>
+            <h3>Flags</h3>
+            <p>{filtered.length} shown</p>
           </div>
           <span className="adm-table-head__page">
             Page {page} of {Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))}
@@ -252,16 +311,13 @@ export default function AdminFlaggedPage() {
         {pageRecords.length ? (
           <>
             <div className="adm-table-wrap">
-              <table className="adm-table">
+              <table className="adm-table adm-table--fit">
                 <thead>
                   <tr>
                     <th>Student</th>
-                    <th>Flag reason</th>
+                    <th>Flag</th>
                     <th>Duty date</th>
-                    <th>Clinical location</th>
-                    <th>Raised by</th>
-                    <th>Review status</th>
-                    <th className="adm-table__action">Action</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -269,7 +325,11 @@ export default function AdminFlaggedPage() {
                     const student = getStudentById(students, record.studentId)
                     const location = getLocationById(locations, record.locationId)
                     return (
-                      <tr key={record.id}>
+                      <tr
+                        key={record.id}
+                        className="adm-table__row--clickable"
+                        onClick={() => setSelectedRecord(record)}
+                      >
                         <td>
                           <div className="adm-person">
                             <Avatar name={student?.name || 'Unknown student'} size="sm" />
@@ -288,27 +348,21 @@ export default function AdminFlaggedPage() {
                             </span>
                           </span>
                         </td>
-                        <td>{formatDateMedium(record.date)}</td>
-                        <td>{location?.name || '—'}</td>
                         <td>
-                          <span className="adm-group-cell">
-                            <strong>{record.flag.raisedBy}</strong>
-                            <span>{formatTime(record.flag.raisedAt)}</span>
-                          </span>
+                          <div className="adm-cell-stack">
+                            <strong>{formatDateMedium(record.date)}</strong>
+                            <span className="adm-cell-sub">{location?.name || 'No location'}</span>
+                          </div>
                         </td>
                         <td>
-                          <StatusBadge tone={record.flag.status === 'Open' ? 'danger' : 'success'} dot>
-                            {record.flag.status}
-                          </StatusBadge>
-                        </td>
-                        <td className="adm-table__action">
-                          <button
-                            type="button"
-                            className="adm-text-btn"
-                            onClick={() => setSelectedRecord(record)}
-                          >
-                            {record.flag.status === 'Open' ? 'Review' : 'View'}
-                          </button>
+                          <div className="adm-cell-stack">
+                            <StatusBadge tone={record.flag.status === 'Open' ? 'danger' : 'success'} dot>
+                              {record.flag.status}
+                            </StatusBadge>
+                            <span className="adm-cell-sub">
+                              {record.flag.raisedBy} · {formatTime(record.flag.raisedAt)}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -326,16 +380,24 @@ export default function AdminFlaggedPage() {
         ) : (
           <EmptyState
             icon={status === 'Open' ? CheckCircle2 : Flag}
-            title={status === 'Open' ? 'No open flags' : 'No flagged records found'}
+            title={status === 'Open' ? 'No open flags' : 'No flags'}
             description={
-              status === 'Open'
-                ? 'All verification flags have been reviewed for the current filters.'
-                : 'Adjust the search or filters to review flagged records.'
+              flagged.length
+                ? status === 'Open'
+                  ? 'All flags have been reviewed.'
+                  : 'Adjust the filters to see more.'
+                : 'Flags will appear here when a submission needs review.'
             }
             action={
-              <button type="button" className="adm-btn adm-btn--secondary" onClick={resetFilters}>
-                Reset filters
-              </button>
+              flagged.length ? (
+                <button
+                  type="button"
+                  className="adm-btn adm-btn--secondary"
+                  onClick={() => (status === 'Open' ? applyQuickFilter('all') : resetFilters())}
+                >
+                  {status === 'Open' ? 'Show all' : 'Clear filters'}
+                </button>
+              ) : null
             }
           />
         )}

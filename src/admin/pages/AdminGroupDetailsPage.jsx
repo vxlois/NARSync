@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAdmin } from '../AdminContext'
 import {
+  getFaceStatus,
   getGroupById,
   getGroupStats,
   getLocationById,
@@ -64,7 +65,7 @@ function GroupEditDrawer({ group, onClose }) {
   return (
     <Drawer
       open
-      title="Edit group details"
+      title="Edit group"
       subtitle={group.name}
       onClose={onClose}
       footer={
@@ -73,14 +74,14 @@ function GroupEditDrawer({ group, onClose }) {
             Cancel
           </button>
           <button type="button" className="adm-btn adm-btn--primary" onClick={handleSave}>
-            Save changes
+            Save
           </button>
         </>
       }
     >
       <div className="adm-form-grid">
         <label className="adm-field">
-          <span>Group name *</span>
+          <span>Name *</span>
           <input value={form.name} onChange={(event) => update('name', event.target.value)} />
         </label>
         <label className="adm-field">
@@ -103,7 +104,7 @@ function GroupEditDrawer({ group, onClose }) {
           />
         </label>
         <label className="adm-field">
-          <span>Assigned clinical instructor</span>
+          <span>Clinical instructor</span>
           <select value={form.instructor} onChange={(event) => update('instructor', event.target.value)}>
             <option value="Not assigned">Not assigned</option>
             {INSTRUCTORS.map((instructor) => (
@@ -112,7 +113,7 @@ function GroupEditDrawer({ group, onClose }) {
           </select>
         </label>
         <label className="adm-field">
-          <span>Group status</span>
+          <span>Status</span>
           <select value={form.status} onChange={(event) => update('status', event.target.value)}>
             <option value="Active">Active</option>
             <option value="Inactive">Inactive</option>
@@ -160,8 +161,6 @@ function GroupMembersDrawer({ group, onClose }) {
         </>
       }
     >
-      <p className="adm-card__description">.
-      </p>
       <StudentSelector
         students={students}
         groups={groups}
@@ -229,9 +228,8 @@ export default function AdminGroupDetailsPage() {
       </Link>
 
       <PageIntro
-        eyebrow="Group details"
         title={group.name}
-        description={`${group.yearLevel} · ${group.block} · ${group.clinicalArea || 'Clinical area not set'}`}
+        description={`${group.yearLevel} · ${group.block} · ${group.clinicalArea || 'No clinical area'}`}
         meta={
           <>
             <StatusBadge tone={group.status === 'Active' ? 'success' : 'neutral'} dot>
@@ -269,25 +267,47 @@ export default function AdminGroupDetailsPage() {
       />
 
       {!canManage && (
-        <ViewOnlyNotice message="Group details can be viewed, but membership and group details cannot be edited." />
+        <ViewOnlyNotice message="View only. Group details and membership can't be changed." />
       )}
 
       <section className="adm-stat-grid adm-stat-grid--4" aria-label="Group summary">
-        <StatCard icon={Users} label="Total members" value={stats.total} note={`${group.block} · ${group.yearLevel}`} tone="violet" />
-        <StatCard icon={ScanFace} label="Registered members" value={stats.registered} note={`${stats.pending} pending · ${stats.notStarted} not started`} tone="green" />
-        <StatCard icon={CalendarDays} label="Assigned schedules" value={groupSchedules.length} note={`${groupSchedules.filter((schedule) => schedule.date >= dateKey()).length} upcoming`} tone="blue" />
-        <StatCard icon={ClipboardCheck} label="Attendance history" value={groupRecords.length} note={`${attendanceRate}% completed · ${openFlags} open flags`} tone="teal" />
+        <StatCard
+          icon={Users}
+          label="Total members"
+          value={stats.total}
+          tone="violet"
+          to={`/admin/students?group=${group.id}`}
+        />
+        <StatCard
+          icon={ScanFace}
+          label="Registered members"
+          value={stats.registered}
+          note={`${stats.pending} pending · ${stats.notStarted} not started`}
+          tone="green"
+          to={`/admin/students?group=${group.id}&face=registered`}
+        />
+        <StatCard
+          icon={CalendarDays}
+          label="Assigned schedules"
+          value={groupSchedules.length}
+          note={`${groupSchedules.filter((schedule) => schedule.date >= dateKey()).length} upcoming`}
+          tone="blue"
+          to={`/admin/schedules?group=${group.id}`}
+        />
+        <StatCard
+          icon={ClipboardCheck}
+          label="Attendance history"
+          value={groupRecords.length}
+          note={`${attendanceRate}% completed · ${openFlags} open flags`}
+          tone="teal"
+          to={`/admin/attendance?group=${group.id}`}
+        />
       </section>
 
       <section className="adm-card adm-progress-card" aria-labelledby="group-progress-title">
         <div className="adm-progress-card__copy">
-          <p className="adm-eyebrow">Facial registration</p>
-          <h3 id="group-progress-title">{stats.registered} of {stats.total} members registered</h3>
-          <p>
-            Students open their assigned group in the mobile app and register their own face.
-            Coordinators and department heads cannot register a face on a student’s behalf.
-          </p>
-          <ProgressBar value={stats.percent} label="Overall registration progress" />
+          <h3 id="group-progress-title">{stats.registered} of {stats.total} registered</h3>
+          <ProgressBar value={stats.percent} label="Face registration progress" hideLabel />
           <div className="adm-progress-chips">
             <span className="adm-progress-chip adm-progress-chip--success">{stats.registered} registered</span>
             <span className="adm-progress-chip adm-progress-chip--warning">{stats.pending} pending capture</span>
@@ -309,25 +329,19 @@ export default function AdminGroupDetailsPage() {
 
       <section className="adm-card" aria-labelledby="group-members-title">
         <div className="adm-card__head">
-          <div>
-            <p className="adm-eyebrow">Roster</p>
-            <h3 id="group-members-title">Group members</h3>
-          </div>
+          <h3 id="group-members-title">Members</h3>
           <span className="adm-meta-pill"><strong>{stats.total}</strong> members</span>
         </div>
 
         {members.length ? (
           <div className="adm-table-wrap">
-            <table className="adm-table">
+            <table className="adm-table adm-table--fit">
               <thead>
                 <tr>
                   <th>Student</th>
-                  <th>Student ID</th>
-                  <th>Year level</th>
-                  <th>Facial registration</th>
+                  <th>Face status</th>
                   <th>Account</th>
                   <th>Last attendance</th>
-                  <th className="adm-table__action">Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -336,37 +350,34 @@ export default function AdminGroupDetailsPage() {
                     .filter((record) => record.studentId === student.id)
                     .sort((a, b) => (a.date < b.date ? 1 : -1))[0]
                   const lastStatus = lastRecord ? getRecordStatus(lastRecord) : null
+                  const face = getFaceStatus(student)
+                  const studentHref = `/admin/students?student=${student.id}`
                   return (
-                    <tr key={student.id}>
+                    <tr
+                      key={student.id}
+                      className="adm-table__row--clickable"
+                      onClick={() => navigate(studentHref)}
+                    >
                       <td>
                         <div className="adm-person">
                           <Avatar name={student.name} size="sm" />
                           <div>
-                            <strong>{student.name}</strong>
-                            <span>{student.section}</span>
+                            <button
+                              type="button"
+                              className="adm-table-link"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                navigate(studentHref)
+                              }}
+                            >
+                              {student.name}
+                            </button>
+                            <span className="adm-mono">{student.id} · {student.section}</span>
                           </div>
                         </div>
                       </td>
-                      <td className="adm-mono">{student.id}</td>
-                      <td>{student.yearLevel}</td>
                       <td>
-                        <StatusBadge
-                          tone={
-                            student.faceRegistered
-                              ? 'success'
-                              : student.faceCaptureStarted
-                                ? 'warning'
-                                : 'neutral'
-                          }
-                        >
-                          {student.faceRegistered
-                            ? 'Registered'
-                            : student.faceCaptureStarted
-                              ? 'Pending capture'
-                              : student.groupId
-                                ? 'Not started'
-                                : 'Not eligible'}
-                        </StatusBadge>
+                        <StatusBadge tone={face.tone}>{face.label}</StatusBadge>
                       </td>
                       <td>
                         <StatusBadge tone={student.accountStatus === 'Active' ? 'success' : 'neutral'}>
@@ -383,11 +394,6 @@ export default function AdminGroupDetailsPage() {
                           <span className="adm-muted">No records</span>
                         )}
                       </td>
-                      <td className="adm-table__action">
-                        <Link to={`/admin/students?student=${student.id}`} className="adm-text-btn">
-                          View
-                        </Link>
-                      </td>
                     </tr>
                   )
                 })}
@@ -397,7 +403,7 @@ export default function AdminGroupDetailsPage() {
         ) : (
           <EmptyState
             title="No members assigned"
-            description="Edit membership to add students to this group."
+            description="Add students to this group."
             action={
               canManage ? (
                 <button
@@ -417,10 +423,7 @@ export default function AdminGroupDetailsPage() {
       <div className="adm-split-grid">
         <section className="adm-card" aria-labelledby="group-schedules-title">
           <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">Duty plan</p>
-              <h3 id="group-schedules-title">Assigned schedules</h3>
-            </div>
+            <h3 id="group-schedules-title">Schedules</h3>
             <Link to={`/admin/schedules?group=${group.id}`} className="adm-text-link">
               View all <ArrowRight size={14} aria-hidden="true" />
             </Link>
@@ -456,16 +459,13 @@ export default function AdminGroupDetailsPage() {
               </table>
             </div>
           ) : (
-            <EmptyState title="No schedules assigned" description="Create a duty schedule for this group." />
+            <EmptyState title="No schedules yet" description="Create a schedule for this group." />
           )}
         </section>
 
         <section className="adm-card" aria-labelledby="group-history-title">
           <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">Recent duty</p>
-              <h3 id="group-history-title">Group attendance history</h3>
-            </div>
+            <h3 id="group-history-title">Attendance</h3>
             <Link to={`/admin/attendance?group=${group.id}`} className="adm-text-link">
               View all <ArrowRight size={14} aria-hidden="true" />
             </Link>
@@ -503,7 +503,7 @@ export default function AdminGroupDetailsPage() {
               </table>
             </div>
           ) : (
-            <EmptyState title="No attendance history" description="Attendance submissions for this group will appear here." />
+            <EmptyState title="No attendance yet" description="Attendance records for this group will appear here." />
           )}
         </section>
       </div>

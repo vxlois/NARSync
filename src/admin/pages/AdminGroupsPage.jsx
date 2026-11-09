@@ -24,45 +24,85 @@ export default function AdminGroupsPage() {
   const [search, setSearch] = useState('')
   const [yearLevel, setYearLevel] = useState('all')
   const [status, setStatus] = useState('all')
+  const [needsAttention, setNeedsAttention] = useState(false)
   const [page, setPage] = useState(1)
 
   useEffect(() => {
     setPage(1)
-  }, [search, yearLevel, status])
+  }, [search, yearLevel, status, needsAttention])
 
   const filteredGroups = useMemo(() => {
     const term = search.trim().toLowerCase()
     return groups.filter((group) => {
       if (yearLevel !== 'all' && group.yearLevel !== yearLevel) return false
       if (status !== 'all' && group.status !== status) return false
+      if (needsAttention) {
+        const stats = getGroupStats(group, students)
+        if (stats.total > 0 && stats.registered === stats.total) return false
+      }
       if (!term) return true
       return [group.name, group.instructor, group.clinicalArea]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(term))
     })
-  }, [groups, search, yearLevel, status])
+  }, [groups, students, search, yearLevel, status, needsAttention])
 
   const pageGroups = filteredGroups.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const totalMembers = groups.reduce((total, group) => total + group.memberIds.length, 0)
-  const totalRegistered = students.filter((student) => student.groupId && student.faceRegistered).length
-  const overallProgress = totalMembers ? Math.round((totalRegistered / totalMembers) * 100) : 0
+  const activeCount = groups.filter((group) => group.status === 'Active').length
+  const inactiveCount = groups.length - activeCount
+  const attentionCount = groups.filter((group) => {
+    const stats = getGroupStats(group, students)
+    return stats.total === 0 || stats.registered < stats.total
+  }).length
 
   const resetFilters = () => {
     setSearch('')
     setYearLevel('all')
     setStatus('all')
+    setNeedsAttention(false)
   }
+
+  const applyQuickFilter = (filter) => {
+    resetFilters()
+    if (filter === 'active') setStatus('Active')
+    if (filter === 'inactive') setStatus('Inactive')
+    if (filter === 'attention') setNeedsAttention(true)
+  }
+
+  const quickFilters = [
+    { key: 'all', label: 'All', count: groups.length },
+    { key: 'active', label: 'Active', count: activeCount },
+    { key: 'inactive', label: 'Inactive', count: inactiveCount },
+    { key: 'attention', label: 'Needs attention', count: attentionCount },
+  ]
+
+  const activeQuickFilter =
+    status === 'Active'
+      ? 'active'
+      : status === 'Inactive'
+        ? 'inactive'
+        : needsAttention
+          ? 'attention'
+          : !search.trim() && yearLevel === 'all' && status === 'all'
+            ? 'all'
+            : ''
 
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Facial registration workflow"
-        title="Group management"
         meta={
           <>
-            <span className="adm-meta-pill"><strong>{groups.length}</strong> groups</span>
-            <span className="adm-meta-pill"><strong>{totalMembers}</strong> members</span>
-            <span className="adm-meta-pill"><strong>{overallProgress}%</strong> registered</span>
+            {quickFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`adm-quick-filter ${activeQuickFilter === filter.key ? 'is-active' : ''}`}
+                onClick={() => applyQuickFilter(filter.key)}
+                aria-pressed={activeQuickFilter === filter.key}
+              >
+                <strong>{filter.count}</strong> {filter.label}
+              </button>
+            ))}
           </>
         }
         actions={
@@ -80,24 +120,14 @@ export default function AdminGroupsPage() {
       />
 
       {!canManage && (
-        <ViewOnlyNotice message="Groups and membership can be viewed, but creating or editing groups is restricted to the RLE Coordinator." />
+        <ViewOnlyNotice message="View only. Groups and membership can't be changed." />
       )}
-
-      <section className="adm-workflow-note" aria-label="Registration workflow">
-        <span className="adm-workflow-note__step">1 <strong>Create group</strong></span>
-        <span aria-hidden="true">→</span>
-        <span className="adm-workflow-note__step">2 <strong>Assign students</strong></span>
-        <span aria-hidden="true">→</span>
-        <span className="adm-workflow-note__step">3 <strong>Students register their own faces</strong></span>
-        <span aria-hidden="true">→</span>
-        <span className="adm-workflow-note__step">4 <strong>Progress updates</strong></span>
-      </section>
 
       <section className="adm-filter-card" aria-label="Group filters">
         <div className="adm-filter-card__head">
           <span>
             <SlidersHorizontal size={15} aria-hidden="true" />
-            Search and filters
+            Filters
           </span>
           <button type="button" className="adm-text-btn" onClick={resetFilters}>
             <RotateCcw size={14} aria-hidden="true" />
@@ -111,7 +141,7 @@ export default function AdminGroupsPage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search group, instructor, or clinical area"
+              placeholder="Search group, instructor, or area"
               aria-label="Search groups"
             />
           </label>
@@ -126,22 +156,14 @@ export default function AdminGroupsPage() {
               ))}
             </select>
           </label>
-          <label className="adm-field adm-field--inline">
-            <span>Status</span>
-            <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="all">All statuses</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-          </label>
         </div>
       </section>
 
       <section className="adm-card adm-card--table">
         <div className="adm-table-head">
           <div>
-            <h3>RLE groups</h3>
-            <p>{filteredGroups.length} groups match the current filters.</p>
+            <h3>Groups</h3>
+            <p>{filteredGroups.length} shown</p>
           </div>
           <span className="adm-table-head__page">
             Page {page} of {Math.max(1, Math.ceil(filteredGroups.length / PAGE_SIZE))}
@@ -151,23 +173,25 @@ export default function AdminGroupsPage() {
         {pageGroups.length ? (
           <>
             <div className="adm-table-wrap">
-              <table className="adm-table">
+              <table className="adm-table adm-table--fit">
                 <thead>
                   <tr>
                     <th>Group</th>
-                    <th>Year &amp; block</th>
                     <th>Clinical instructor</th>
                     <th>Members</th>
-                    <th>Facial registration</th>
+                    <th>Registration</th>
                     <th>Status</th>
-                    <th className="adm-table__action">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {pageGroups.map((group) => {
                     const stats = getGroupStats(group, students)
                     return (
-                      <tr key={group.id}>
+                      <tr
+                        key={group.id}
+                        className="adm-table__row--clickable"
+                        onClick={() => navigate(`/admin/groups/${group.id}`)}
+                      >
                         <td>
                           <div className="adm-person">
                             <span className="adm-group-mark" aria-hidden="true">
@@ -177,24 +201,22 @@ export default function AdminGroupsPage() {
                               <button
                                 type="button"
                                 className="adm-table-link"
-                                onClick={() => navigate(`/admin/groups/${group.id}`)}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  navigate(`/admin/groups/${group.id}`)
+                                }}
                               >
                                 {group.name}
                               </button>
+                              <span>{group.yearLevel} · {group.block}</span>
                             </div>
                           </div>
-                        </td>
-                        <td>
-                          <span className="adm-group-cell">
-                            <strong>{group.yearLevel}</strong>
-                            <span>{group.block}</span>
-                          </span>
                         </td>
                         <td>{group.instructor || 'Not assigned'}</td>
                         <td>{stats.total}</td>
                         <td>
                           <div className="adm-progress-cell">
-                            <span>{stats.registered} of {stats.total} registered</span>
+                            <span>{stats.registered}/{stats.total} registered</span>
                             <ProgressBar value={stats.percent} hideLabel />
                           </div>
                         </td>
@@ -202,15 +224,6 @@ export default function AdminGroupsPage() {
                           <StatusBadge tone={group.status === 'Active' ? 'success' : 'neutral'} dot>
                             {group.status}
                           </StatusBadge>
-                        </td>
-                        <td className="adm-table__action">
-                          <button
-                            type="button"
-                            className="adm-text-btn"
-                            onClick={() => navigate(`/admin/groups/${group.id}`)}
-                          >
-                            View
-                          </button>
                         </td>
                       </tr>
                     )
@@ -229,7 +242,7 @@ export default function AdminGroupsPage() {
           <EmptyState
             icon={UsersRound}
             title="No groups found"
-            description="Adjust the filters or create a new RLE group."
+            description="Adjust filters or create a group."
             action={
               canManage ? (
                 <button

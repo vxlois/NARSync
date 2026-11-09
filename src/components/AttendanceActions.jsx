@@ -29,18 +29,33 @@ function ActionCard({ title, icon: Icon, disabled, hint, onClick, tone }) {
   )
 }
 
-export default function AttendanceActions() {
+export default function AttendanceActions({
+  record: recordProp,
+  groupId = '',
+  canSubmit = true,
+  lockReason = '',
+}) {
   const navigate = useNavigate()
-  const { todayRecord, hasTimedIn, hasTimedOut } = useApp()
+  const { todayRecord } = useApp()
 
-  const timeInHint = hasTimedIn
-    ? `Recorded at ${formatTime(todayRecord?.timeIn?.at)}`
-    : 'Capture a group photo'
-  const timeOutHint = hasTimedOut
-    ? `Recorded at ${formatTime(todayRecord?.timeOut?.at)}`
+  const record = recordProp === undefined ? todayRecord : recordProp
+  const groupQuery = groupId ? `?group=${encodeURIComponent(groupId)}` : ''
+  const hasTimedIn = Boolean(record?.timeIn)
+  const hasTimedOut = Boolean(record?.timeOut)
+  const isLocked = !canSubmit
+
+  const timeInHint = isLocked
+    ? lockReason || 'Attendance is currently locked.'
     : hasTimedIn
-      ? 'Capture your group photo'
-      : 'Available after a valid time in'
+      ? `Recorded at ${formatTime(record?.timeIn?.at)}`
+      : 'Capture a group photo'
+  const timeOutHint = isLocked
+    ? lockReason || 'Attendance is currently locked.'
+    : hasTimedOut
+      ? `Recorded at ${formatTime(record?.timeOut?.at)}`
+      : hasTimedIn
+        ? 'Capture your group photo'
+        : 'Available after a valid time in'
 
   return (
     <div className="attendance-actions" aria-label="Attendance actions">
@@ -49,16 +64,16 @@ export default function AttendanceActions() {
         icon={LogIn}
         tone="primary"
         hint={timeInHint}
-        disabled={hasTimedIn}
-        onClick={() => navigate('/attendance/time-in/capture')}
+        disabled={isLocked || hasTimedIn}
+        onClick={() => navigate(`/attendance/time-in/capture${groupQuery}`)}
       />
       <ActionCard
         title="Time Out"
         icon={LogOut}
-        tone={hasTimedIn && !hasTimedOut ? 'ready' : 'secondary'}
+        tone={!isLocked && hasTimedIn && !hasTimedOut ? 'ready' : 'secondary'}
         hint={timeOutHint}
-        disabled={!hasTimedIn || hasTimedOut}
-        onClick={() => navigate('/attendance/time-out/capture')}
+        disabled={isLocked || !hasTimedIn || hasTimedOut}
+        onClick={() => navigate(`/attendance/time-out/capture${groupQuery}`)}
       />
     </div>
   )
