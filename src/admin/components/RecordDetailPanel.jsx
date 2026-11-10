@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, MapPin, ScanFace } from 'lucide-react'
+import { MapPin, ScanFace } from 'lucide-react'
 import { useAdmin } from '../AdminContext'
 import {
   getGroupById,
@@ -12,7 +12,7 @@ import { formatCoords, formatDateLong, formatTime, formatTimestamp } from '../..
 import Avatar from './Avatar'
 import StatusBadge from './StatusBadge'
 
-export default function RecordDetailPanel({ record, review = false, children }) {
+export default function RecordDetailPanel({ record }) {
   const { students, groups, schedules, locations } = useAdmin()
   const student = getStudentById(students, record.studentId)
   const group = getGroupById(groups, record.groupId)
@@ -20,53 +20,6 @@ export default function RecordDetailPanel({ record, review = false, children }) 
   const location = getLocationById(locations, record.locationId)
   const status = getRecordStatus(record)
   const scheduleStatus = schedule ? getScheduleStatus(schedule) : null
-
-  const flagGuidance = record.flag
-    ? record.flag.reason === 'Face match below threshold'
-      ? "Compare the capture with the student's verified profile. Confirm the face match before accepting the record."
-      : 'Compare the submitted coordinates with the assigned location and allowed radius. Confirm the student was inside the duty area.'
-    : ''
-
-  const flagCard = record.flag ? (
-    <div
-      className={`adm-flag-card ${
-        record.flag.status === 'Open' ? 'adm-flag-card--open' : 'adm-flag-card--resolved'
-      }`}
-    >
-      <div className="adm-flag-card__head">
-        <span className="adm-flag-card__icon" aria-hidden="true">
-          {record.flag.status === 'Open' ? (
-            <AlertTriangle size={17} />
-          ) : (
-            <CheckCircle2 size={17} />
-          )}
-        </span>
-        <div>
-          <strong>{record.flag.reason}</strong>
-          <p>By {record.flag.raisedBy} · {formatTimestamp(record.flag.raisedAt)}</p>
-        </div>
-        <StatusBadge tone={record.flag.status === 'Open' ? 'danger' : 'success'}>
-          {record.flag.status}
-        </StatusBadge>
-      </div>
-      <p className="adm-flag-card__detail">{record.flag.detail}</p>
-      {review && record.flag.status === 'Open' && (
-        <div className="adm-flag-card__guide">
-          <strong>What to check</strong>
-          <p>{flagGuidance}</p>
-        </div>
-      )}
-      {record.flag.status === 'Resolved' && (
-        <div className="adm-flag-resolution">
-          <span>Resolution</span>
-          <p>{record.flag.resolution}</p>
-          <small>
-            {record.flag.resolvedBy} · {formatTimestamp(record.flag.resolvedAt)}
-          </small>
-        </div>
-      )}
-    </div>
-  ) : null
 
   return (
     <div className="adm-record-detail">
@@ -82,8 +35,6 @@ export default function RecordDetailPanel({ record, review = false, children }) 
           {status.label}
         </StatusBadge>
       </div>
-
-      {review && flagCard}
 
       <div className="adm-detail-grid">
         <div>
@@ -111,10 +62,6 @@ export default function RecordDetailPanel({ record, review = false, children }) 
           <strong className="adm-mono">{record.id}</strong>
         </div>
       </div>
-
-      {review && children}
-
-      {!review && flagCard}
 
       <section className="adm-detail-section">
         <h4>
@@ -171,8 +118,8 @@ export default function RecordDetailPanel({ record, review = false, children }) 
               <strong>{record.device}</strong>
             </div>
             <div>
-              <span>Review</span>
-              <strong>{record.flag ? record.flag.status : 'None'}</strong>
+              <span>Attendance status</span>
+              <strong>{status.label}</strong>
             </div>
           </div>
         </div>

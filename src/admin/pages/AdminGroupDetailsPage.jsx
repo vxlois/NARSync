@@ -215,7 +215,7 @@ export default function AdminGroupDetailsPage() {
     .filter((record) => record.groupId === group.id)
     .sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1))
   const completedRecords = groupRecords.filter((record) => record.timeIn && record.timeOut).length
-  const openFlags = groupRecords.filter((record) => record.flag?.status === 'Open').length
+  const lateRecords = groupRecords.filter((record) => getRecordStatus(record).key === 'late').length
   const attendanceRate = groupRecords.length
     ? Math.round((completedRecords / groupRecords.length) * 100)
     : 0
@@ -298,7 +298,7 @@ export default function AdminGroupDetailsPage() {
           icon={ClipboardCheck}
           label="Attendance history"
           value={groupRecords.length}
-          note={`${attendanceRate}% completed · ${openFlags} open flags`}
+          note={`${attendanceRate}% completed · ${lateRecords} late`}
           tone="teal"
           to={`/admin/attendance?group=${group.id}`}
         />

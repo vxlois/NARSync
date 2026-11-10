@@ -65,7 +65,7 @@ function StudentDetailDrawer({ studentId }) {
     .filter((record) => record.studentId === student.id)
     .sort((a, b) => (a.date < b.date ? 1 : -1))
   const completed = studentRecords.filter((record) => record.timeIn && record.timeOut).length
-  const flagged = studentRecords.filter((record) => record.flag?.status === 'Open').length
+  const late = studentRecords.filter((record) => getRecordStatus(record).key === 'late').length
 
   const handleSave = () => {
     if (assignment === (student.groupId || '')) return
@@ -177,8 +177,8 @@ function StudentDetailDrawer({ studentId }) {
             <strong>{completed}</strong>
           </div>
           <div>
-            <span>Open flags</span>
-            <strong>{flagged}</strong>
+            <span>Late</span>
+            <strong>{late}</strong>
           </div>
         </div>
 

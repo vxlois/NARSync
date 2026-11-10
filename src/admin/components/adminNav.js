@@ -3,7 +3,6 @@ import {
   CalendarDays,
   ClipboardList,
   Compass,
-  Flag,
   LayoutDashboard,
   MapPin,
   Settings,
@@ -18,7 +17,6 @@ export const ADMIN_NAV = [
   { to: '/admin/schedules', label: 'Duty Schedules', icon: CalendarDays },
   { to: '/admin/locations', label: 'Clinical Locations', icon: MapPin },
   { to: '/admin/attendance', label: 'Attendance Records', icon: ClipboardList },
-  { to: '/admin/flagged', label: 'Flagged Records', icon: Flag, badge: 'flags' },
   { to: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { to: '/admin/settings', label: 'Settings', icon: Settings },
 ]

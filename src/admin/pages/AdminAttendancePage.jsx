@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
+  CheckCircle2,
   ClipboardList,
+  Clock3,
   Download,
+  LogIn,
+  LogOut,
   RotateCcw,
   Search,
   SlidersHorizontal,
 } from 'lucide-react'
 import { useAdmin } from '../AdminContext'
 import {
+  getAttendanceSummary,
   getGroupById,
   getLocationById,
   getRecordStatus,
@@ -21,9 +26,9 @@ import { downloadCsv } from '../utils/csv'
 import Avatar from '../components/Avatar'
 import Drawer from '../components/Drawer'
 import EmptyState from '../components/EmptyState'
-import PageIntro from '../components/PageIntro'
 import Pagination from '../components/Pagination'
 import RecordDetailPanel from '../components/RecordDetailPanel'
+import StatCard from '../components/StatCard'
 import StatusBadge from '../components/StatusBadge'
 
 const PAGE_SIZE = 10
@@ -31,15 +36,9 @@ const RECORD_STATUSES = [
   { value: 'all', label: 'All statuses' },
   { value: 'completed', label: 'Completed' },
   { value: 'late', label: 'Late' },
-  { value: 'timed-in', label: 'Timed in' },
+  { value: 'timed-in', label: 'On duty' },
   { value: 'missing-out', label: 'Missing time out' },
-  { value: 'flagged', label: 'Flagged' },
-]
-const RECORD_VIEWS = [
-  { value: 'all', label: 'All' },
-  { value: 'timed-in', label: 'Timed in' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'on-duty', label: 'On duty' },
+  { value: 'absent', label: 'Absent' },
 ]
 
 export default function AdminAttendancePage() {
@@ -47,97 +46,87 @@ export default function AdminAttendancePage() {
   const { toast } = useToast()
   const [searchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get('student') || '')
-  const [date, setDate] = useState(searchParams.get('date') || '')
+  const [fromDate, setFromDate] = useState(searchParams.get('from') || searchParams.get('date') || '')
+  const [toDate, setToDate] = useState(searchParams.get('to') || searchParams.get('date') || '')
   const [groupId, setGroupId] = useState(searchParams.get('group') || 'all')
   const [yearLevel, setYearLevel] = useState(searchParams.get('year') || 'all')
   const [locationId, setLocationId] = useState(searchParams.get('location') || 'all')
   const [status, setStatus] = useState(searchParams.get('status') || 'all')
-  const [view, setView] = useState(searchParams.get('view') || 'all')
   const [page, setPage] = useState(1)
   const [selectedRecord, setSelectedRecord] = useState(null)
 
   useEffect(() => {
+    const date = searchParams.get('date') || ''
     setSearch(searchParams.get('student') || '')
-    setDate(searchParams.get('date') || '')
+    setFromDate(searchParams.get('from') || date)
+    setToDate(searchParams.get('to') || date)
     setGroupId(searchParams.get('group') || 'all')
     setYearLevel(searchParams.get('year') || 'all')
     setLocationId(searchParams.get('location') || 'all')
     setStatus(searchParams.get('status') || 'all')
-    setView(searchParams.get('view') || 'all')
   }, [searchParams])
 
   useEffect(() => {
     setPage(1)
-  }, [search, date, groupId, yearLevel, locationId, status, view])
+  }, [search, fromDate, toDate, groupId, yearLevel, locationId, status])
 
-  const filteredRecords = useMemo(() => {
+  const scopedRecords = useMemo(() => {
     const term = search.trim().toLowerCase()
     return records.filter((record) => {
       const student = getStudentById(students, record.studentId)
       const group = getGroupById(groups, record.groupId)
       const location = getLocationById(locations, record.locationId)
-      if (date && record.date !== date) return false
+      if (fromDate && record.date < fromDate) return false
+      if (toDate && record.date > toDate) return false
       if (groupId !== 'all' && record.groupId !== groupId) return false
       if (yearLevel !== 'all' && student?.yearLevel !== yearLevel) return false
       if (locationId !== 'all' && record.locationId !== locationId) return false
-      if (status !== 'all' && getRecordStatus(record).key !== status) return false
-      if (view === 'timed-in' && !record.timeIn) return false
-      if (view === 'completed' && !(record.timeIn && record.timeOut)) return false
-      if (view === 'on-duty' && !(record.timeIn && !record.timeOut)) return false
       if (!term) return true
       return [student?.name, student?.id, group?.name, location?.name]
         .filter(Boolean)
         .some((value) => value.toLowerCase().includes(term))
     })
-  }, [records, students, groups, locations, search, date, groupId, yearLevel, locationId, status, view])
+  }, [
+    records,
+    students,
+    groups,
+    locations,
+    search,
+    fromDate,
+    toDate,
+    groupId,
+    yearLevel,
+    locationId,
+  ])
+
+  const filteredRecords = useMemo(
+    () =>
+      status === 'all'
+        ? scopedRecords
+        : scopedRecords.filter((record) => getRecordStatus(record).key === status),
+    [scopedRecords, status],
+  )
+
+  const summary = useMemo(() => getAttendanceSummary(scopedRecords), [scopedRecords])
 
   const pageRecords = filteredRecords.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  const completedCount = records.filter((record) => getRecordStatus(record).key === 'completed').length
-  const flaggedCount = records.filter((record) => record.flag?.status === 'Open').length
-  const lateCount = records.filter((record) => getRecordStatus(record).key === 'late').length
+
+  const percent = (value) => (summary.total ? (value / summary.total) * 100 : 0)
 
   const resetFilters = () => {
     setSearch('')
-    setDate('')
+    setFromDate('')
+    setToDate('')
     setGroupId('all')
     setYearLevel('all')
     setLocationId('all')
     setStatus('all')
-    setView('all')
   }
-
-  const applyQuickFilter = (filter) => {
-    resetFilters()
-    if (filter !== 'all') setStatus(filter)
-  }
-
-  const quickFilters = [
-    { key: 'all', label: 'All', count: records.length },
-    { key: 'completed', label: 'Completed', count: completedCount },
-    { key: 'late', label: 'Late', count: lateCount },
-    { key: 'flagged', label: 'Flagged', count: flaggedCount },
-  ]
-
-  const activeQuickFilter =
-    status === 'completed'
-      ? 'completed'
-      : status === 'late'
-        ? 'late'
-        : status === 'flagged'
-          ? 'flagged'
-          : !search.trim() &&
-              !date &&
-              groupId === 'all' &&
-              yearLevel === 'all' &&
-              locationId === 'all' &&
-              view === 'all'
-            ? 'all'
-            : ''
 
   const exportRecords = () => {
     downloadCsv(
       `narsync-attendance-${dateKey()}.csv`,
-      ['Date', 'Student ID', 'Student', 'Group', 'Location', 'Time in', 'Time out', 'Status', 'Flag'],
+      ['Date', 'Student ID', 'Student', 'Group', 'Location', 'Time in', 'Time out', 'Status'],
       filteredRecords.map((record) => {
         const student = getStudentById(students, record.studentId)
         const group = getGroupById(groups, record.groupId)
@@ -152,7 +141,6 @@ export default function AdminAttendancePage() {
           formatTime(record.timeIn),
           formatTime(record.timeOut),
           recordStatus.label,
-          record.flag?.status || 'None',
         ]
       }),
     )
@@ -161,29 +149,91 @@ export default function AdminAttendancePage() {
 
   return (
     <div className="adm-page">
-      <PageIntro
-        meta={
-          <>
-            {quickFilters.map((filter) => (
-              <button
-                key={filter.key}
-                type="button"
-                className={`adm-quick-filter ${activeQuickFilter === filter.key ? 'is-active' : ''}`}
-                onClick={() => applyQuickFilter(filter.key)}
-                aria-pressed={activeQuickFilter === filter.key}
-              >
-                <strong>{filter.count}</strong> {filter.label}
-              </button>
-            ))}
-          </>
-        }
-        actions={
-          <button type="button" className="adm-btn adm-btn--secondary" onClick={exportRecords}>
-            <Download size={16} aria-hidden="true" />
-            Export CSV
-          </button>
-        }
-      />
+      <section className="adm-stat-grid" aria-label="Attendance summary">
+        <StatCard
+          icon={ClipboardList}
+          label="Records"
+          value={summary.total}
+          tone="blue"
+          onClick={() => setStatus('all')}
+          hint="Show all records"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label="Completed"
+          value={summary.completed}
+          note={`${summary.punctualityRate}% on time`}
+          tone="green"
+          onClick={() => setStatus('completed')}
+          hint="Filter completed records"
+        />
+        <StatCard
+          icon={Clock3}
+          label="Late"
+          value={summary.late}
+          tone="amber"
+          onClick={() => setStatus('late')}
+          hint="Filter late records"
+        />
+        <StatCard
+          icon={LogIn}
+          label="On duty"
+          value={summary.timedIn}
+          note="Today"
+          tone="teal"
+          onClick={() => setStatus('timed-in')}
+          hint="Filter records on duty"
+        />
+        <StatCard
+          icon={LogOut}
+          label="Missing time out"
+          value={summary.missingOut}
+          note="Past duties"
+          tone="red"
+          onClick={() => setStatus('missing-out')}
+          hint="Filter records missing a time out"
+        />
+      </section>
+
+      <section className="adm-card adm-progress-hero" aria-label="Attendance rate">
+        <div className="adm-progress-hero__top">
+          <strong>{summary.completionRate}%</strong>
+          <span>attended</span>
+        </div>
+        <div
+          className="adm-segmented-bar"
+          role="img"
+          aria-label={`${summary.completed} completed, ${summary.late} late, ${summary.timedIn} on duty, ${summary.missingOut} missing a time out, ${summary.absent} absent`}
+        >
+          <span
+            className="adm-segmented-bar__part adm-segmented-bar__part--completed"
+            style={{ width: `${percent(summary.completed)}%` }}
+          />
+          <span
+            className="adm-segmented-bar__part adm-segmented-bar__part--late"
+            style={{ width: `${percent(summary.late)}%` }}
+          />
+          <span
+            className="adm-segmented-bar__part adm-segmented-bar__part--ontime"
+            style={{ width: `${percent(summary.timedIn)}%` }}
+          />
+          <span
+            className="adm-segmented-bar__part adm-segmented-bar__part--missing"
+            style={{ width: `${percent(summary.missingOut)}%` }}
+          />
+          <span
+            className="adm-segmented-bar__part adm-segmented-bar__part--absent"
+            style={{ width: `${percent(summary.absent)}%` }}
+          />
+        </div>
+        <div className="adm-legend">
+          <span><i className="adm-legend__dot adm-legend__dot--completed" />{summary.completed} Completed</span>
+          <span><i className="adm-legend__dot adm-legend__dot--late" />{summary.late} Late</span>
+          <span><i className="adm-legend__dot adm-legend__dot--ontime" />{summary.timedIn} On duty</span>
+          <span><i className="adm-legend__dot adm-legend__dot--missing" />{summary.missingOut} Missing time out</span>
+          <span><i className="adm-legend__dot adm-legend__dot--absent" />{summary.absent} Absent</span>
+        </div>
+      </section>
 
       <section className="adm-filter-card" aria-label="Attendance filters">
         <div className="adm-filter-card__head">
@@ -203,13 +253,27 @@ export default function AdminAttendancePage() {
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search student, group, or location"
+              placeholder="Search records"
               aria-label="Search attendance records"
             />
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Date</span>
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            <span>From</span>
+            <input
+              type="date"
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
+          </label>
+          <label className="adm-field adm-field--inline">
+            <span>To</span>
+            <input
+              type="date"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(event) => setToDate(event.target.value)}
+            />
           </label>
           <label className="adm-field adm-field--inline">
             <span>Group</span>
@@ -221,7 +285,7 @@ export default function AdminAttendancePage() {
             </select>
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Year level</span>
+            <span>Year</span>
             <select value={yearLevel} onChange={(event) => setYearLevel(event.target.value)}>
               <option value="all">All years</option>
               {YEAR_LEVELS.map((level) => (
@@ -246,14 +310,6 @@ export default function AdminAttendancePage() {
               ))}
             </select>
           </label>
-          <label className="adm-field adm-field--inline">
-            <span>View</span>
-            <select value={view} onChange={(event) => setView(event.target.value)}>
-              {RECORD_VIEWS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </label>
         </div>
       </section>
 
@@ -261,11 +317,12 @@ export default function AdminAttendancePage() {
         <div className="adm-table-head">
           <div>
             <h3>Records</h3>
-            <p>{filteredRecords.length} shown</p>
+            <p>{filteredRecords.length} records</p>
           </div>
-          <span className="adm-table-head__page">
-            Page {page} of {Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE))}
-          </span>
+          <button type="button" className="adm-btn adm-btn--secondary" onClick={exportRecords}>
+            <Download size={16} aria-hidden="true" />
+            Export CSV
+          </button>
         </div>
 
         {pageRecords.length ? (
@@ -276,7 +333,7 @@ export default function AdminAttendancePage() {
                   <tr>
                     <th>Student</th>
                     <th>Group</th>
-                    <th>Duty date</th>
+                    <th>Date</th>
                     <th>Status</th>
                   </tr>
                 </thead>
@@ -297,10 +354,7 @@ export default function AdminAttendancePage() {
                             <Avatar name={student?.name || 'Unknown student'} size="sm" />
                             <div>
                               <strong>{student?.name || 'Unknown student'}</strong>
-                              <span>
-                                {record.studentId}
-                                {student?.yearLevel ? ` · ${student.yearLevel}` : ''}
-                              </span>
+                              <span>{record.studentId}</span>
                             </div>
                           </div>
                         </td>
@@ -314,17 +368,12 @@ export default function AdminAttendancePage() {
                           <div className="adm-cell-stack">
                             <strong>{formatDateMedium(record.date)}</strong>
                             <span className="adm-cell-sub adm-mono">
-                              {formatTime(record.timeIn)} · {formatTime(record.timeOut)}
+                              In {formatTime(record.timeIn)} · Out {formatTime(record.timeOut)}
                             </span>
                           </div>
                         </td>
                         <td>
-                          <div className="adm-cell-stack">
-                            <StatusBadge tone={recordStatus.tone}>{recordStatus.label}</StatusBadge>
-                            <span className="adm-cell-sub">
-                              {record.flag ? `Flag ${record.flag.status.toLowerCase()}` : 'No flag'}
-                            </span>
-                          </div>
+                          <StatusBadge tone={recordStatus.tone}>{recordStatus.label}</StatusBadge>
                         </td>
                       </tr>
                     )
@@ -345,7 +394,7 @@ export default function AdminAttendancePage() {
             title="No records"
             description={
               records.length
-                ? 'Adjust the filters to see more.'
+                ? 'No records match these filters.'
                 : 'Attendance records will appear here once students submit.'
             }
             action={

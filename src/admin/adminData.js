@@ -386,10 +386,8 @@ const LOCATION_SEED = [
 export const SETTINGS_SEED = {
   gracePeriod: 15,
   requireGeofence: true,
-  autoFlagLocation: true,
-  autoFlagFaceMatch: true,
   faceMatchThreshold: 85,
-  notifyFlags: true,
+  notifyAttendance: true,
   notifyRegistration: true,
   notifySchedules: false,
   emailDigest: 'Daily',
@@ -600,7 +598,7 @@ const TODAY_OUTCOMES = {
     'late',
     'completed',
     'incomplete',
-    'flagged',
+    'late',
     'completed',
     'completed',
     'incomplete',
@@ -611,7 +609,7 @@ const TODAY_OUTCOMES = {
     'late',
     'completed',
     'completed',
-    'flagged',
+    'late',
     'completed',
     'absent',
     'incomplete',
@@ -626,49 +624,14 @@ const PAST_OUTCOMES = [
   'completed',
   'incomplete',
   'completed',
-  'flagged',
+  'late',
   'completed',
   'absent',
 ]
 
-function flagFor({ offset, outcome, memberIndex, student, schedule, location, locations }) {
-  const isOpen = offset === 0
-  const isFaceIssue = (memberIndex + offset) % 2 === 0
-  const alternate = locations.find((item) => item.id !== location.id) || location
-
-  return {
-    id: `flag-${schedule.date}-${student.id}`,
-    reason: isFaceIssue ? 'Face match below threshold' : 'Location outside geofence',
-    detail: isFaceIssue
-      ? `The group capture produced a ${((68 + memberIndex) % 15 + 70).toFixed(1)}% face match for this student. Manual verification is required before the record is accepted.`
-      : `The submission coordinates were approximately ${180 + memberIndex * 23} m from ${location.name}. The nearest configured location was ${alternate.name}.`,
-    status: isOpen ? 'Open' : 'Resolved',
-    raisedAt: isoAt(offset, 15, 22),
-    raisedBy: isFaceIssue ? 'Facial verification check' : 'Geofence check',
-    resolvedAt: isOpen ? null : isoAt(offset - 1, 9, 40),
-    resolvedBy: isOpen ? null : 'Mr. Bryan Bejer, MAN',
-    resolution: isOpen
-      ? ''
-      : isFaceIssue
-        ? 'Reviewed the group capture with the clinical instructor. Identity confirmed.'
-        : 'Clinical instructor confirmed an alternate entrance within the duty area.',
-    outcome,
-  }
-}
-
-function buildRecord({
-  student,
-  group,
-  schedule,
-  outcome,
-  offset,
-  memberIndex,
-  location,
-  locations,
-}) {
+function buildRecord({ student, group, schedule, outcome, offset, memberIndex, location }) {
   let timeIn = null
   let timeOut = null
-  let flag = null
 
   const baseMinute = 42 + ((memberIndex * 3) % 16)
 
@@ -680,20 +643,6 @@ function buildRecord({
     timeOut = isoAt(offset, 15, 8 + (memberIndex % 10))
   } else if (outcome === 'incomplete') {
     timeIn = isoAt(offset, 6, 49 + (memberIndex % 12))
-  } else if (outcome === 'flagged') {
-    timeIn = isoAt(offset, 6, 47 + (memberIndex % 10))
-    if (offset === 0 && memberIndex % 2 === 0) {
-      timeOut = isoAt(offset, 15, 5)
-    }
-    flag = flagFor({
-      offset,
-      outcome,
-      memberIndex,
-      student,
-      schedule,
-      location,
-      locations,
-    })
   }
 
   if (!timeIn && outcome !== 'absent') {
@@ -712,10 +661,7 @@ function buildRecord({
     submittedAt: timeOut || timeIn || isoAt(offset, 15, 30),
     method: 'Group facial capture',
     device: 'Student mobile · Android 14',
-    faceMatch: flag?.reason === 'Face match below threshold'
-      ? 72.4 + (memberIndex % 4)
-      : 96.2 + ((memberIndex % 5) * 0.5),
-    flag,
+    faceMatch: 96.2 + ((memberIndex % 5) * 0.5),
     note: outcome === 'late' ? 'Arrived after the 7:15 AM grace period.' : '',
   }
 }
@@ -744,7 +690,6 @@ function buildAttendance({ students, groups, schedules, locations }) {
           offset: 0,
           memberIndex,
           location,
-          locations,
         }),
       )
     })
@@ -774,7 +719,6 @@ function buildAttendance({ students, groups, schedules, locations }) {
             offset,
             memberIndex,
             location,
-            locations,
           }),
         )
       })
@@ -793,7 +737,9 @@ export function buildInitialAdminData() {
   const schedules = buildSchedules(groups)
   const records = buildAttendance({ students, groups, schedules, locations })
 
-  const openFlags = records.filter((record) => record.flag?.status === 'Open')
+  const missingTimeOuts = records.filter(
+    (record) => getRecordStatus(record).key === 'missing-out',
+  ).length
   const groupTwo = groups.find((group) => group.id === 'grp-02')
   const groupTwoRegistered = students.filter(
     (student) => student.groupId === 'grp-02' && student.faceRegistered,
@@ -808,13 +754,13 @@ export function buildInitialAdminData() {
     settings: { ...SETTINGS_SEED },
     notifications: [
       {
-        id: 'ntf-flags',
-        title: `${openFlags.length} records flagged for review`,
-        body: 'Today’s group captures need coordinator verification.',
+        id: 'ntf-attendance',
+        title: `${missingTimeOuts} attendance records need follow-up`,
+        body: 'Duty records from previous days are still missing a time out.',
         at: isoAt(0, 15, 26),
         read: false,
-        href: '/admin/flagged',
-        tone: 'danger',
+        href: '/admin/attendance?status=missing-out',
+        tone: 'warning',
       },
       {
         id: 'ntf-registration',
@@ -947,9 +893,6 @@ export function scheduleWarnings(schedule) {
 }
 
 export function getRecordStatus(record, today = dateKey()) {
-  if (record.flag?.status === 'Open') {
-    return { key: 'flagged', label: 'Flagged', tone: 'danger' }
-  }
   if (!record.timeIn) {
     return { key: 'absent', label: 'Absent', tone: 'danger' }
   }
@@ -962,6 +905,41 @@ export function getRecordStatus(record, today = dateKey()) {
     return { key: 'late', label: 'Late', tone: 'warning' }
   }
   return { key: 'completed', label: 'Completed', tone: 'success' }
+}
+
+/**
+ * Builds the attendance counts shown in the coordinator summaries.
+ * Completed and late both count as attended; on-duty and missing-out are
+ * still waiting for a time out.
+ */
+export function getAttendanceSummary(records, today = dateKey()) {
+  const summary = {
+    total: records.length,
+    completed: 0,
+    late: 0,
+    timedIn: 0,
+    missingOut: 0,
+    absent: 0,
+  }
+
+  records.forEach((record) => {
+    const key = getRecordStatus(record, today).key
+    if (key === 'completed') summary.completed += 1
+    else if (key === 'late') summary.late += 1
+    else if (key === 'timed-in') summary.timedIn += 1
+    else if (key === 'missing-out') summary.missingOut += 1
+    else summary.absent += 1
+  })
+
+  summary.attended = summary.completed + summary.late
+  summary.completionRate = summary.total
+    ? Math.round((summary.attended / summary.total) * 100)
+    : 0
+  summary.punctualityRate = summary.attended
+    ? Math.round((summary.completed / summary.attended) * 100)
+    : 0
+
+  return summary
 }
 
 export function getScheduledStudentsForDate({

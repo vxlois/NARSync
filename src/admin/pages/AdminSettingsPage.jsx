@@ -19,7 +19,7 @@ import ViewOnlyNotice from '../components/ViewOnlyNotice'
 const ACCESS_ROWS = [
   { section: 'Students & groups', coordinator: 'Manage', departmentHead: 'View' },
   { section: 'Schedules & locations', coordinator: 'Manage', departmentHead: 'View' },
-  { section: 'Attendance & flags', coordinator: 'Manage', departmentHead: 'View & export' },
+  { section: 'Attendance records', coordinator: 'Manage & export', departmentHead: 'View & export' },
   { section: 'Reports', coordinator: 'Export', departmentHead: 'View & export' },
   { section: 'Settings', coordinator: 'Manage', departmentHead: 'View' },
 ]
@@ -234,20 +234,6 @@ export default function AdminSettingsPage() {
                   onChange={(value) => update('requireGeofence', value)}
                   disabled={!canManage}
                 />
-                <Toggle
-                  label="Flag location issues"
-                  description="Open a flag for out-of-range submissions."
-                  checked={form.autoFlagLocation}
-                  onChange={(value) => update('autoFlagLocation', value)}
-                  disabled={!canManage}
-                />
-                <Toggle
-                  label="Flag low face match"
-                  description="Open a flag below the match threshold."
-                  checked={form.autoFlagFaceMatch}
-                  onChange={(value) => update('autoFlagFaceMatch', value)}
-                  disabled={!canManage}
-                />
               </div>
             </div>
           </section>
@@ -260,10 +246,10 @@ export default function AdminSettingsPage() {
 
             <div className="adm-toggle-list">
               <Toggle
-                label="Flag alerts"
-                description="When a new flag opens."
-                checked={form.notifyFlags}
-                onChange={(value) => update('notifyFlags', value)}
+                label="Attendance alerts"
+                description="When late or incomplete attendance is recorded."
+                checked={form.notifyAttendance}
+                onChange={(value) => update('notifyAttendance', value)}
                 disabled={!canManage}
               />
               <Toggle

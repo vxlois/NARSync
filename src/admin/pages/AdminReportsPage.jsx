@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import {
   BarChart3,
   CalendarRange,
+  Clock3,
   Download,
   FileText,
-  Flag,
   RotateCcw,
   ScanFace,
   Users,
@@ -77,7 +77,9 @@ export default function AdminReportsPage() {
 
   const completedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
   const lateRecords = filteredRecords.filter((record) => getRecordStatus(record).key === 'late')
-  const openFlags = filteredRecords.filter((record) => record.flag?.status === 'Open')
+  const missingOutRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'missing-out',
+  )
   const registeredStudents = scopedStudents.filter((student) => student.faceRegistered).length
   const completionRate = scheduledSlots
     ? Math.round((completedRecords.length / scheduledSlots) * 100)
@@ -100,7 +102,9 @@ export default function AdminReportsPage() {
     const groupRecords = filteredRecords.filter((record) => record.groupId === group.id)
     const groupCompleted = groupRecords.filter((record) => record.timeIn && record.timeOut).length
     const groupLate = groupRecords.filter((record) => getRecordStatus(record).key === 'late').length
-    const groupFlags = groupRecords.filter((record) => record.flag?.status === 'Open').length
+    const groupMissingOut = groupRecords.filter(
+      (record) => getRecordStatus(record).key === 'missing-out',
+    ).length
     return {
       group,
       students: groupStudents.length,
@@ -111,7 +115,7 @@ export default function AdminReportsPage() {
       records: groupRecords.length,
       completed: groupCompleted,
       late: groupLate,
-      flags: groupFlags,
+      missingOut: groupMissingOut,
       completionRate: groupSlots ? Math.round((groupCompleted / groupSlots) * 100) : 0,
     }
   })
@@ -124,9 +128,9 @@ export default function AdminReportsPage() {
       slots: totals.slots + row.slots,
       completed: totals.completed + row.completed,
       late: totals.late + row.late,
-      flags: totals.flags + row.flags,
+      missingOut: totals.missingOut + row.missingOut,
     }),
-    { students: 0, registered: 0, schedules: 0, slots: 0, completed: 0, late: 0, flags: 0 },
+    { students: 0, registered: 0, schedules: 0, slots: 0, completed: 0, late: 0, missingOut: 0 },
   )
   const totalRegistrationRate = reportTotals.students
     ? Math.round((reportTotals.registered / reportTotals.students) * 100)
@@ -186,7 +190,7 @@ export default function AdminReportsPage() {
       ['Scheduled slots', scheduledSlots],
       ['Completed', completedRecords.length],
       ['Late', lateRecords.length],
-      ['Open flags', openFlags.length],
+      ['Missing time out', missingOutRecords.length],
       ['Completion rate', `${completionRate}%`],
       ['Face registration', `${registeredStudents} of ${scopedStudents.length} (${registrationRate}%)`],
       [],
@@ -200,7 +204,7 @@ export default function AdminReportsPage() {
         'Scheduled slots',
         'Completed',
         'Late',
-        'Open flags',
+        'Missing time out',
         'Completion %',
       ],
       ...groupRows.map((row) => [
@@ -212,7 +216,7 @@ export default function AdminReportsPage() {
         row.slots,
         row.completed,
         row.late,
-        row.flags,
+        row.missingOut,
         row.completionRate,
       ]),
       [
@@ -224,7 +228,7 @@ export default function AdminReportsPage() {
         reportTotals.slots,
         reportTotals.completed,
         reportTotals.late,
-        reportTotals.flags,
+        reportTotals.missingOut,
         totalCompletionRate,
       ],
     ])
@@ -325,9 +329,9 @@ export default function AdminReportsPage() {
               tone="amber"
             />
             <StatCard
-              icon={Flag}
-              label="Open flags"
-              value={openFlags.length}
+              icon={Clock3}
+              label="Missing time out"
+              value={missingOutRecords.length}
               note={`${filteredRecords.length} records`}
               tone="red"
             />
@@ -417,7 +421,7 @@ export default function AdminReportsPage() {
                       <th>Schedules</th>
                       <th>Completed</th>
                       <th>Late</th>
-                      <th>Flags</th>
+                      <th>Missing out</th>
                       <th>Completion</th>
                     </tr>
                   </thead>
@@ -445,7 +449,7 @@ export default function AdminReportsPage() {
                         </td>
                         <td>{row.completed}</td>
                         <td>{row.late}</td>
-                        <td>{row.flags}</td>
+                        <td>{row.missingOut}</td>
                         <td><strong>{row.completionRate}%</strong></td>
                       </tr>
                     ))}

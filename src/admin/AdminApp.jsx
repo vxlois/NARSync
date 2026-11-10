@@ -11,7 +11,6 @@ import AdminGroupDetailsPage from './pages/AdminGroupDetailsPage'
 import AdminSchedulesPage from './pages/AdminSchedulesPage'
 import AdminLocationsPage from './pages/AdminLocationsPage'
 import AdminAttendancePage from './pages/AdminAttendancePage'
-import AdminFlaggedPage from './pages/AdminFlaggedPage'
 import AdminReportsPage from './pages/AdminReportsPage'
 import AdminSettingsPage from './pages/AdminSettingsPage'
 
@@ -45,7 +44,6 @@ export default function AdminApp() {
           <Route path="schedules" element={<AdminSchedulesPage />} />
           <Route path="locations" element={<AdminLocationsPage />} />
           <Route path="attendance" element={<AdminAttendancePage />} />
-          <Route path="flagged" element={<AdminFlaggedPage />} />
           <Route path="reports" element={<AdminReportsPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="*" element={<AdminNotFoundPage />} />

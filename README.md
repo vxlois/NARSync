@@ -139,7 +139,6 @@ title, search, notifications, and a profile menu.
 | Duty schedules | `/admin/schedules` |
 | Clinical locations | `/admin/locations` |
 | Attendance records | `/admin/attendance` |
-| Flagged records | `/admin/flagged` |
 | Reports | `/admin/reports` |
 | Settings | `/admin/settings` |
 
@@ -148,7 +147,7 @@ title, search, notifications, and a profile menu.
 Use the profile menu (or Settings) to switch between two simulated roles:
 
 - **RLE Coordinator** — full management: assign students, create and edit groups, publish
-  schedules, edit locations, resolve flagged records, and save settings.
+  schedules, edit locations, review attendance summaries, and save settings.
 - **Department Head** — view-only oversight across every section, including CSV exports,
   with mutating controls replaced by a notice.
 
@@ -159,15 +158,18 @@ open their assigned group → students register their own faces → progress upd
 student can only belong to one group, and registration is only available to students with a
 group assignment. Moving a student between groups updates both groups' progress.
 
-### Dashboard data rules
+### Attendance summaries and filters
 
-- Summary cards cover total registered students, students scheduled for duty, students
-  timed in, students with completed attendance, and records flagged for review.
-- Every summary card is a drill-down link into the matching Student, Schedule, Attendance,
-  or Flagged view. The current date, group, year level, and location filters are carried
-  into the destination page, along with a quick view that matches the card's metric.
-- The date, group, year level, and clinical location filters scope the attendance summary,
-  seven-day trend, recent submissions, and recent flagged records.
+- The attendance records page opens with an at-a-glance summary of the records in scope:
+  total records, on-time completions, late time-ins, students still on duty, and records
+  missing a time out.
+- Each summary card applies the matching attendance status to the record table, so the
+  coordinator can move from a summary number to the underlying records in one click.
+- Filters cover a date range, RLE group, year level, clinical location, attendance status,
+  and a free-text search across student, group, and location. The summary and table both
+  update from the same filtered scope.
+- The dashboard's date, group, year level, and clinical location filters scope the
+  attendance summary, seven-day trend, recent submissions, and records that need follow-up.
 - Incomplete schedules remain drafts and cannot be treated as ready for attendance.
 - Reports and list exports generate CSV files in the browser. Nothing is uploaded or saved.
 

@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle,
   ArrowRight,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Flag,
+  ClipboardList,
+  Clock3,
   LogIn,
   RotateCcw,
   UserCheck,
@@ -67,11 +67,17 @@ export default function AdminDashboardPage() {
   )
 
   const timedInRecords = filteredRecords.filter((record) => record.timeIn)
-  const completedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
-  const flaggedRecords = filteredRecords
-    .filter((record) => record.flag?.status === 'Open')
-    .sort((a, b) => (a.flag.raisedAt < b.flag.raisedAt ? 1 : -1))
-  const onDuty = Math.max(0, timedInRecords.length - completedRecords.length)
+  const attendedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
+  const completedRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'completed',
+  )
+  const lateRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'late',
+  )
+  const attentionRecords = filteredRecords
+    .filter((record) => ['late', 'missing-out'].includes(getRecordStatus(record).key))
+    .sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1))
+  const onDuty = Math.max(0, timedInRecords.length - attendedRecords.length)
 
   const missingStudents = useMemo(() => {
     const timedIn = new Set(timedInRecords.map((record) => record.studentId))
@@ -84,7 +90,8 @@ export default function AdminDashboardPage() {
 
   const total = scheduledIds.size
   const percent = (value) => (total ? (value / total) * 100 : 0)
-  const completionRate = Math.round(percent(completedRecords.length))
+  const completionRate = Math.round(percent(attendedRecords.length))
+  const onTimeRate = Math.round(percent(completedRecords.length))
 
   const trend = useMemo(() => {
     const days = []
@@ -125,7 +132,7 @@ export default function AdminDashboardPage() {
   const filters = { date, group: groupId, year: yearLevel, location: locationId }
   const schedulesHref = `/admin/schedules${buildQuery({ date, group: groupId, location: locationId })}`
   const attendanceHref = `/admin/attendance${buildQuery(filters)}`
-  const flaggedHref = `/admin/flagged${buildQuery({ date, status: 'Open', group: groupId })}`
+  const lateHref = `/admin/attendance${buildQuery({ ...filters, status: 'late' })}`
 
   const isFiltered = groupId !== 'all' || yearLevel !== 'all' || locationId !== 'all' || date !== dateKey()
   const resetFilters = () => {
@@ -141,10 +148,12 @@ export default function AdminDashboardPage() {
         title={date === dateKey() ? 'Today' : formatDateLong(date)}
         actions={
           <>
-            <Link to={flaggedHref} className="adm-btn adm-btn--secondary">
-              <Flag size={16} aria-hidden="true" />
-              Flags
-              {flaggedRecords.length > 0 && <span className="adm-btn__count">{flaggedRecords.length}</span>}
+            <Link to={attendanceHref} className="adm-btn adm-btn--secondary">
+              <ClipboardList size={16} aria-hidden="true" />
+              Attendance
+              {attentionRecords.length > 0 && (
+                <span className="adm-btn__count">{attentionRecords.length}</span>
+              )}
             </Link>
             <Link to="/admin/reports" className="adm-btn adm-btn--primary">
               Reports
@@ -196,25 +205,25 @@ export default function AdminDashboardPage() {
           value={timedInRecords.length}
           note={`of ${total}`}
           tone="teal"
-          to={`/admin/attendance${buildQuery({ ...filters, view: 'timed-in' })}`}
+          to={attendanceHref}
           hint="Open timed-in records"
         />
         <StatCard
           icon={ClipboardCheck}
           label="Completed"
           value={completedRecords.length}
-          note={`${completionRate}%`}
+          note={`${onTimeRate}% on time`}
           tone="green"
-          to={`/admin/attendance${buildQuery({ ...filters, view: 'completed' })}`}
+          to={`/admin/attendance${buildQuery({ ...filters, status: 'completed' })}`}
           hint="Open completed records"
         />
         <StatCard
-          icon={Flag}
-          label="Flagged"
-          value={flaggedRecords.length}
-          tone="red"
-          to={flaggedHref}
-          hint="Open flagged records"
+          icon={Clock3}
+          label="Late"
+          value={lateRecords.length}
+          tone="amber"
+          to={lateHref}
+          hint="Open late attendance records"
         />
       </section>
 
@@ -229,14 +238,14 @@ export default function AdminDashboardPage() {
         <div
           className="adm-segmented-bar"
           role="img"
-          aria-label={`${completedRecords.length} completed, ${onDuty} on duty, ${missingStudents.length} not timed in`}
+          aria-label={`${attendedRecords.length} completed, ${onDuty} on duty, ${missingStudents.length} not timed in`}
         >
-          <span className="adm-segmented-bar__part adm-segmented-bar__part--completed" style={{ width: `${percent(completedRecords.length)}%` }} />
+          <span className="adm-segmented-bar__part adm-segmented-bar__part--completed" style={{ width: `${percent(attendedRecords.length)}%` }} />
           <span className="adm-segmented-bar__part adm-segmented-bar__part--ontime" style={{ width: `${percent(onDuty)}%` }} />
           <span className="adm-segmented-bar__part adm-segmented-bar__part--missing" style={{ width: `${percent(missingStudents.length)}%` }} />
         </div>
         <div className="adm-legend">
-          <span><i className="adm-legend__dot adm-legend__dot--completed" />{completedRecords.length} Completed</span>
+          <span><i className="adm-legend__dot adm-legend__dot--completed" />{attendedRecords.length} Completed</span>
           <span><i className="adm-legend__dot adm-legend__dot--ontime" />{onDuty} On duty</span>
           <span><i className="adm-legend__dot adm-legend__dot--missing" />{missingStudents.length} Not timed in</span>
         </div>
@@ -268,35 +277,41 @@ export default function AdminDashboardPage() {
           )}
         </section>
 
-        <section className="adm-card" aria-labelledby="flags-title">
+        <section className="adm-card" aria-labelledby="followup-title">
           <div className="adm-card__head">
-            <h3 id="flags-title">Flags to review</h3>
-            <Link to={flaggedHref} className="adm-text-link">
+            <h3 id="followup-title">Needs follow-up</h3>
+            <Link to={attendanceHref} className="adm-text-link">
               All <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </div>
-          {flaggedRecords.length ? (
-            <div className="adm-flag-list">
-              {flaggedRecords.slice(0, 5).map((record) => (
-                <button
-                  type="button"
-                  className="adm-flag-row"
-                  key={record.id}
-                  onClick={() => setSelectedRecord(record)}
-                >
-                  <span className="adm-flag-row__icon" aria-hidden="true">
-                    <AlertTriangle size={16} />
-                  </span>
-                  <span className="adm-flag-row__copy">
-                    <strong>{getStudentById(students, record.studentId)?.name}</strong>
-                    <span>{record.flag.reason}</span>
-                  </span>
-                  <span className="adm-text-btn">Review</span>
-                </button>
-              ))}
+          {attentionRecords.length ? (
+            <div className="adm-recent-list">
+              {attentionRecords.slice(0, 5).map((record) => {
+                const student = getStudentById(students, record.studentId)
+                const status = getRecordStatus(record)
+                return (
+                  <button
+                    type="button"
+                    className="adm-recent-row"
+                    key={record.id}
+                    onClick={() => setSelectedRecord(record)}
+                  >
+                    <Avatar name={student?.name || 'Unknown'} size="sm" />
+                    <span className="adm-recent-row__main">
+                      <strong>{student?.name}</strong>
+                      <span>
+                        {status.key === 'late'
+                          ? `Timed in ${formatTime(record.timeIn)}`
+                          : `No time out · ${formatDateMedium(record.date)}`}
+                      </span>
+                    </span>
+                    <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                  </button>
+                )
+              })}
             </div>
           ) : (
-            <EmptyState icon={CheckCircle2} title="No open flags" />
+            <EmptyState icon={CheckCircle2} title="No follow-ups needed" />
           )}
         </section>
       </div>

@@ -5,7 +5,7 @@ import SidebarIllustration from './SidebarIllustration'
 import { ADMIN_NAV } from './adminNav'
 
 export default function AdminSidebar({ open, onClose }) {
-  const { currentUser, openFlagCount } = useAdmin()
+  const { currentUser } = useAdmin()
 
   return (
     <>
@@ -34,7 +34,6 @@ export default function AdminSidebar({ open, onClose }) {
           <p className="adm-nav__label">Workspace</p>
           {ADMIN_NAV.map((item) => {
             const Icon = item.icon
-            const badge = item.badge === 'flags' ? openFlagCount : null
             return (
               <NavLink
                 key={item.to}
@@ -45,7 +44,6 @@ export default function AdminSidebar({ open, onClose }) {
               >
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
-                {badge > 0 && <span className="adm-nav__badge">{badge}</span>}
               </NavLink>
             )
           })}
