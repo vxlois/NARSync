@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 import FaceStatusCard from '../components/FaceStatusCard'
 import { ConfirmSheet } from '../components/ui/Sheet'
-import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
@@ -42,15 +41,12 @@ export default function ProfilePage() {
       <section className="profile-card">
         <span className="profile-avatar" aria-hidden="true">{student.initials}</span>
         <h2>{student.name}</h2>
-        <p className="profile-card__email">{student.email}</p>
-        <p className="profile-card__id">Student ID {student.id}</p>
-        <p className="profile-card__program">
-          {student.program}
-          <br />
-          {student.yearLevel} – {student.block}
-        </p>
-        <div className="profile-card__badges">
-          <Badge tone="violet">{student.group.name}</Badge>
+
+        <div className="profile-card__details">
+          <p className="profile-card__email">{student.email}</p>
+          <p>{student.program}</p>
+          <p>{student.yearLevel} - {student.block}</p>
+          <p className="profile-card__group">{student.group.name}</p>
         </div>
       </section>
 

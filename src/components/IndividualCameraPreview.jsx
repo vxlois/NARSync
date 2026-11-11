@@ -1,8 +1,16 @@
-import { CheckCircle2, UserRound } from 'lucide-react'
+import { CheckCircle2, ScanFace, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { formatClock } from '../utils/format'
 
-export default function GroupCameraPreview({ captured = false, capturedAt = null }) {
+/**
+ * Simulated camera preview for individual attendance photos. The photo is
+ * matched against the student's registered facial data before submission.
+ */
+export default function IndividualCameraPreview({
+  captured = false,
+  capturedAt = null,
+  studentName = '',
+}) {
   const [now, setNow] = useState(() => new Date().toISOString())
 
   useEffect(() => {
@@ -30,39 +38,36 @@ export default function GroupCameraPreview({ captured = false, capturedAt = null
         <span className="camera-corner camera-corner--br" aria-hidden="true" />
         <span className="camera-preview__grid" aria-hidden="true" />
 
-        <div className="group-silhouette" aria-hidden="true">
-          <span className="group-silhouette__person group-silhouette__person--1">
-            <UserRound size={54} strokeWidth={1.2} />
-          </span>
-          <span className="group-silhouette__person group-silhouette__person--2">
-            <UserRound size={46} strokeWidth={1.2} />
-          </span>
-          <span className="group-silhouette__person group-silhouette__person--3">
-            <UserRound size={46} strokeWidth={1.2} />
-          </span>
-          <span className="group-silhouette__person group-silhouette__person--4">
-            <UserRound size={40} strokeWidth={1.2} />
-          </span>
-          <span className="group-silhouette__person group-silhouette__person--5">
-            <UserRound size={40} strokeWidth={1.2} />
-          </span>
+        <div className="individual-silhouette" aria-hidden="true">
+          <span className="individual-silhouette__ring" />
+          <UserRound size={92} strokeWidth={1.1} />
         </div>
 
         <p className="camera-preview__guide">
-          {captured ? 'Group photo ready' : 'Position the whole group inside the frame'}
+          {captured
+            ? 'Your photo is ready'
+            : 'Position your face inside the frame'}
         </p>
+
+        {!captured && studentName && (
+          <p className="camera-preview__identity">
+            <ScanFace size={13} aria-hidden="true" />
+            Matching against {studentName}&apos;s registered face
+          </p>
+        )}
 
         {captured && (
           <div className="camera-preview__captured" role="status">
             <CheckCircle2 size={22} aria-hidden="true" />
             <span>Photo captured</span>
-            <small>Photo evidence</small>
+            <small>Individual photo · Face matched</small>
           </div>
         )}
       </div>
 
       <div className="camera-preview__bottom">
-        <span>Group photo evidence</span>
+        <span>Individual photo evidence</span>
+        <span>Registered facial data</span>
       </div>
     </div>
   )

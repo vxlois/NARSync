@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   CalendarX2,
@@ -16,6 +17,7 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
+import { getTimeOutAccess } from '../utils/attendance'
 import { dateKey, formatCoords, formatDateLong, formatDayParts, formatTime } from '../utils/format'
 
 function TimelineEntry({ label, evidence, emptyText }) {
@@ -38,7 +40,7 @@ function TimelineEntry({ label, evidence, emptyText }) {
             </span>
             <span>
               <ImageIcon size={11} aria-hidden="true" />
-              Group photo
+              {evidence.photoLabel || 'Individual photo'}
             </span>
           </div>
         </>
@@ -52,8 +54,26 @@ function TimelineEntry({ label, evidence, emptyText }) {
 export default function RecordDetailsPage() {
   const { recordId } = useParams()
   const navigate = useNavigate()
-  const { records, todayRecord } = useApp()
+  const { records, todayRecord, student } = useApp()
+  const [now, setNow] = useState(() => Date.now())
   const record = records.find((item) => item.id === recordId)
+  const group = record
+    ? student.groups.find(
+        (item) => item.id === (record.groupId || student.group.id),
+      ) ?? student.groups[0]
+    : null
+  const isToday = record?.date === dateKey()
+  const isOpenSession = Boolean(isToday && record?.timeIn && !record?.timeOut)
+  const timeOutAccess = getTimeOutAccess(group, now)
+  const isWaitingForTimeOut =
+    isOpenSession &&
+    (!timeOutAccess.hasSchedule || !timeOutAccess.isOpen)
+
+  useEffect(() => {
+    if (!isWaitingForTimeOut) return undefined
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [isWaitingForTimeOut])
 
   if (!record) {
     return (
@@ -79,8 +99,6 @@ export default function RecordDetailsPage() {
   }
 
   const day = formatDayParts(record.date)
-  const isToday = record.date === dateKey()
-  const isOpenSession = isToday && record.timeIn && !record.timeOut
 
   return (
     <div className="screen">
@@ -195,13 +213,25 @@ export default function RecordDetailsPage() {
       {record.note && <DemoNotice tone="warning">{record.note}</DemoNotice>}
 
       {isOpenSession && todayRecord?.timeIn && (
-        <Button
-          block
-          icon={ClipboardList}
-          onClick={() => navigate('/attendance/time-out/capture')}
-        >
-          Continue to time out
-        </Button>
+        <>
+          <Button
+            block
+            icon={ClipboardList}
+            disabled={isWaitingForTimeOut}
+            onClick={() => navigate('/attendance/time-out/capture')}
+          >
+            {isWaitingForTimeOut
+              ? timeOutAccess.hasSchedule
+                ? `Time out opens at ${timeOutAccess.label} PHT`
+                : 'Waiting for time out schedule'
+              : 'Continue to time out'}
+          </Button>
+          <p className="submit-bar__hint">
+            {isWaitingForTimeOut
+              ? 'Time Out is locked until your scheduled duty end time in Philippine Standard Time.'
+              : 'Your scheduled Time Out is now available.'}
+          </p>
+        </>
       )}
     </div>
   )

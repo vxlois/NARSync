@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage'
 import DutyDetailsPage from './pages/DutyDetailsPage'
 import FaceRegistrationPage from './pages/FaceRegistrationPage'
 import AttendanceHubPage from './pages/AttendanceHubPage'
+import AttendanceDetailsPage from './pages/AttendanceDetailsPage'
 import CapturePage from './pages/CapturePage'
 import ReviewPage from './pages/ReviewPage'
 import SuccessPage from './pages/SuccessPage'
@@ -71,6 +72,14 @@ export default function App() {
             <Route path="/duty" element={<DutyDetailsPage />} />
             <Route path="/face-registration" element={<FaceRegistrationPage />} />
             <Route path="/attendance" element={<AttendanceHubPage />} />
+            <Route
+              path="/attendance/details"
+              element={<AttendanceDetailsPage />}
+            />
+            <Route
+              path="/attendance/group-photo"
+              element={<Navigate to="/attendance/details" replace />}
+            />
             <Route path="/attendance/:type/capture" element={<CapturePage />} />
             <Route path="/attendance/:type/review" element={<ReviewPage />} />
             <Route path="/attendance/success/:recordId" element={<SuccessPage />} />

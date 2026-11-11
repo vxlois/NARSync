@@ -3,7 +3,12 @@ import { Link, useLocation } from 'react-router-dom'
 
 const ITEMS = [
   { to: '/dashboard', label: 'Home', icon: House, match: ['/dashboard', '/duty'] },
-  { to: '/attendance', label: 'Attendance', icon: ScanLine, match: ['/attendance'] },
+  {
+    to: '/attendance',
+    label: 'Attendance',
+    icon: ScanLine,
+    match: ['/attendance', '/attendance/details'],
+  },
   { to: '/history', label: 'History', icon: History, match: ['/history'] },
   { to: '/profile', label: 'Profile', icon: UserRound, match: ['/profile', '/settings'] },
 ]

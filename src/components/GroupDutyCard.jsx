@@ -1,49 +1,58 @@
-import { CalendarDays, ChevronRight, Clock3 } from 'lucide-react'
-import { formatDateMedium } from '../utils/format'
+import { Link } from 'react-router-dom'
 import Badge from './ui/Badge'
 
 /**
- * Selectable attendance card that mirrors the Home page's compact DutyCard.
+ * The student's permanent RLE group card. A student belongs to only one RLE
+ * group, so this card also hosts today's attendance session.
+ *
+ * Pass `to` to make the whole card a link to the Group Photo Attendance page.
  */
-export default function GroupDutyCard({ group, status, selected, onSelect }) {
+export default function GroupDutyCard({
+  group,
+  status,
+  children,
+  to,
+  className = '',
+  titleId = 'assigned-group-name',
+}) {
+  const classes = `duty-card attendance-group ${
+    to ? 'attendance-group--link' : ''
+  } ${className}`.trim()
+
+  const content = (
+    <>
+      <div className="duty-card__top">
+        <div>
+          <p className="duty-card__eyebrow">Today&apos;s Session</p>
+          <h2 className="duty-card__title" id={titleId}>
+            {group.name}
+          </h2>
+          <p className="duty-card__area">{group.session.facility}</p>
+        </div>
+        <Badge tone={status.tone} dot>
+          {status.label}
+        </Badge>
+      </div>
+
+      {children}
+    </>
+  )
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={classes}
+        aria-label={`Open today's attendance details for ${group.name} · ${status.label}`}
+      >
+        {content}
+      </Link>
+    )
+  }
+
   return (
-    <button
-      type="button"
-      className={`duty-card duty-card--compact duty-card--selectable ${
-        selected ? 'is-selected' : ''
-      }`.trim()}
-      onClick={onSelect}
-      role="radio"
-      aria-checked={selected}
-      aria-label={`${group.name} · ${status.label}`}
-    >
-      <span className="duty-card__top">
-        <span>
-          <span className="duty-card__eyebrow">Assigned group</span>
-          <span className="duty-card__area">{group.name}</span>
-        </span>
-        <Badge tone={status.tone} dot>{status.label}</Badge>
-      </span>
-
-      <span className="duty-card__main">
-        <span className="duty-card__title">{group.session.facility}</span>
-      </span>
-
-      <span className="duty-card__meta">
-        <span>
-          <CalendarDays size={15} aria-hidden="true" />
-          {formatDateMedium(group.session.date)}
-        </span>
-        <span>
-          <Clock3 size={15} aria-hidden="true" />
-          {group.session.shift}
-        </span>
-      </span>
-
-      <span className="duty-card__link">
-        {selected ? 'Selected group' : 'View duty session'}
-        <ChevronRight size={16} aria-hidden="true" />
-      </span>
-    </button>
+    <section className={classes} aria-labelledby={titleId}>
+      {content}
+    </section>
   )
 }

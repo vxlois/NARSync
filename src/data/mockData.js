@@ -1,4 +1,4 @@
-import { dateKey } from '../utils/format'
+import { dateKey, philippinesDateKey } from '../utils/format'
 
 /**
  * Local credentials. There is no authentication server in this phase.
@@ -22,7 +22,44 @@ export const simulatedLocation = {
   accuracy: 12,
 }
 
-const dutyDate = dateKey()
+const dutyDate = philippinesDateKey()
+
+/**
+ * Group rosters shown on the attendance details page. Names are fictional demo
+ * data and only used to let students see who else is assigned to their group.
+ */
+const GROUP_MEMBERS = {
+  'rle-01': [
+    'Lois Lain S. Alcantara',
+    'Maria Sofia D. Reyes',
+    'John Paolo M. Cruz',
+    'Angelica B. Santos',
+    'Mark Anthony L. Delgado',
+    'Jasmine Kaye P. Flores',
+    'Carlo Miguel R. Navarro',
+    'Patricia Anne G. Villanueva',
+  ],
+  'rle-02': [
+    'Rafael Luis M. Bautista',
+    'Bea Andrea C. Mendoza',
+    'Miguel Angelo T. Garcia',
+    'Kristine Joy L. Ramos',
+    'Joshua Emmanuel P. Torres',
+    'Alyssa Marie D. Fernandez',
+    'Nico Adrian B. Castillo',
+    'Hannah Grace S. Aquino',
+  ],
+  'rle-03': [
+    'Paolo Vincent R. Lim',
+    'Charmaine Grace P. Diaz',
+    'Jerome Allen M. Pascual',
+    'Danica Rose T. Salvador',
+    'Kevin Matthew L. Rivera',
+    'Marielle Anne C. Domingo',
+    'Christian James B. Mercado',
+    'Stephanie Mae G. Velasco',
+  ],
+}
 
 /**
  * The student's three assigned RLE groups. Each group has its own duty schedule
@@ -33,7 +70,8 @@ export const RLE_GROUPS = [
     id: 'rle-01',
     name: 'RLE Group 1',
     code: 'BUP-RLE-01',
-    members: 8,
+    members: GROUP_MEMBERS['rle-01'].length,
+    memberNames: GROUP_MEMBERS['rle-01'],
     clinicalArea: 'Medical-Surgical Nursing',
     coordinator: 'Mr. Bryan Bejer, MAN',
     preceptor: 'Mr. Jerome C. Salazar, RN',
@@ -52,7 +90,8 @@ export const RLE_GROUPS = [
     id: 'rle-02',
     name: 'RLE Group 2',
     code: 'BUP-RLE-02',
-    members: 8,
+    members: GROUP_MEMBERS['rle-02'].length,
+    memberNames: GROUP_MEMBERS['rle-02'],
     clinicalArea: 'Maternal and Child Nursing',
     coordinator: 'Mr. Bryan Bejer, MAN',
     preceptor: 'Ms. Charlene D. Aquino, RN',
@@ -71,7 +110,8 @@ export const RLE_GROUPS = [
     id: 'rle-03',
     name: 'RLE Group 3',
     code: 'BUP-RLE-03',
-    members: 8,
+    members: GROUP_MEMBERS['rle-03'].length,
+    memberNames: GROUP_MEMBERS['rle-03'],
     clinicalArea: 'Fundamentals of Nursing',
     coordinator: 'Mr. Bryan Bejer, MAN',
     preceptor: 'Mr. Dennis R. Baldemor, RN',
@@ -103,7 +143,7 @@ export const mockStudent = {
   initials: 'LA',
   email: 'llsa2023-8007-12309@bicol-u.edu.ph',
   program: 'Bachelor of Science in Nursing',
-  yearLevel: '4th Year',
+  yearLevel: 'Level 4',
   block: 'Block B',
   section: 'BSN 4 – Block B',
   groups: assignedGroups.map((group) => ({
@@ -111,6 +151,7 @@ export const mockStudent = {
     name: group.name,
     code: group.code,
     members: group.members,
+    memberNames: group.memberNames,
     clinicalArea: group.clinicalArea,
     session: group.session,
   })),
@@ -119,6 +160,7 @@ export const mockStudent = {
     name: assignedGroup.name,
     code: assignedGroup.code,
     members: assignedGroup.members,
+    memberNames: assignedGroup.memberNames,
     clinicalArea: assignedGroup.clinicalArea,
   },
   duty: {
@@ -209,7 +251,7 @@ function evidence(daysAgo, hours, minutes) {
     accuracy: simulatedLocation.accuracy,
     available: true,
     simulated: true,
-    photoLabel: 'Group photo',
+    photoLabel: 'Individual photo',
   }
 }
 

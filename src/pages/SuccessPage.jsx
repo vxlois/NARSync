@@ -79,7 +79,7 @@ export default function SuccessPage() {
           </div>
           <div className="review-row">
             <dt>Evidence</dt>
-            <dd>Group photo</dd>
+            <dd>{evidence.photoLabel || 'Individual photo'}</dd>
           </div>
         </dl>
       </div>

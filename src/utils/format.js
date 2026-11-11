@@ -32,6 +32,23 @@ export function dateKey(date = new Date()) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
+/**
+ * Calendar date key in Philippine Standard Time (UTC+8). Attendance windows
+ * use this so the day always follows the schedule's time zone.
+ */
+export function philippinesDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Manila',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]),
+  )
+  return `${values.year}-${values.month}-${values.day}`
+}
+
 /** Parse a local YYYY-MM-DD key without UTC drift. */
 export function parseDateKey(key) {
   const [year, month, day] = key.split('-').map(Number)
@@ -41,6 +58,11 @@ export function parseDateKey(key) {
 export function formatDateLong(input) {
   const date = typeof input === 'string' && input.length === 10 ? parseDateKey(input) : new Date(input)
   return `${WEEKDAYS[date.getDay()]}, ${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+}
+
+export function formatDateNoWeekday(input) {
+  const date = typeof input === 'string' && input.length === 10 ? parseDateKey(input) : new Date(input)
+  return `${MONTHS[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
 }
 
 export function formatDateMedium(input) {

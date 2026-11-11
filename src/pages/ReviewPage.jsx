@@ -4,8 +4,8 @@ import {
   Building2,
   CheckCircle2,
   MapPin,
+  ScanFace,
   ShieldCheck,
-  Users,
 } from 'lucide-react'
 import DemoNotice from '../components/DemoNotice'
 import PageHeader from '../components/PageHeader'
@@ -64,9 +64,9 @@ export default function ReviewPage() {
           backLabel="Back to capture"
         />
         <EmptyState
-          icon={Users}
+          icon={ScanFace}
           title="No evidence captured"
-          description="Capture or select a group photo before reviewing attendance evidence."
+          description="Capture or select your own photo before reviewing attendance evidence."
           action={
             <Button
               variant="secondary"
@@ -108,7 +108,9 @@ export default function ReviewPage() {
             accuracy: draft.accuracy,
             available: draft.locationAvailable,
             simulated: true,
-            photoLabel: 'Group photo',
+            photoLabel: 'Individual photo',
+            studentId: draft.studentId,
+            faceVerified: true,
           },
         })
         clearDraft()
@@ -126,29 +128,16 @@ export default function ReviewPage() {
   return (
     <div className="screen">
       <PageHeader
-        title={`Review ${typeLabel.toLowerCase()}`}
-        eyebrow={`${group.name} · Attendance review`}
+        title={`Confirm ${typeLabel.toLowerCase()}`}
+        eyebrow={group.name}
         backTo={`/attendance/${type}/capture?group=${group.id}`}
-        backLabel="Back to capture"
+        backLabel="Back to photo"
       />
 
-      <div className="stepper">
-        <div className="stepper__meta">
-          <span>
-            Step <strong>2</strong> of 2
-          </span>
-          <span>Review & confirm</span>
-        </div>
-        <div className="stepper__bars" aria-hidden="true">
-          <span className="stepper__bar is-active" />
-          <span className="stepper__bar is-active" />
-        </div>
-      </div>
-
       <div className="evidence-photo">
-        <span className="badge badge--light evidence-photo__badge">Group photo</span>
-        <Users size={40} aria-hidden="true" />
-        <strong>Group photo</strong>
+        <span className="badge badge--light evidence-photo__badge">Individual photo</span>
+        <ScanFace size={40} aria-hidden="true" />
+        <strong>Your attendance photo</strong>
         <small>{formatTimestamp(draft.capturedAt)}</small>
       </div>
 
@@ -172,6 +161,10 @@ export default function ReviewPage() {
           <div className="review-row">
             <dt>Photo source</dt>
             <dd>{draft.method}</dd>
+          </div>
+          <div className="review-row">
+            <dt>Face verification</dt>
+            <dd>Registered facial data matched</dd>
           </div>
           <div className="review-row">
             <dt>RLE group</dt>
@@ -254,7 +247,7 @@ export default function ReviewPage() {
           Submit {typeLabel.toLowerCase()}
         </Button>
         <p className="submit-bar__hint">
-          You will be asked to confirm the evidence before the submission is saved.
+          Check your photo, time, and location, then submit.
         </p>
       </div>
 
@@ -262,9 +255,10 @@ export default function ReviewPage() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirm}
-        title={`Confirm ${typeLabel.toLowerCase()} submission`}
-        description="Please check the evidence summary. Confirming creates an attendance record for this session."
-        confirmLabel={`Confirm & submit`}
+        title={`Submit ${typeLabel.toLowerCase()}?`}
+        description={`Your photo and location will be saved as your ${typeLabel.toLowerCase()} for today.`}
+        confirmLabel={`Yes, submit ${typeLabel.toLowerCase()}`}
+        cancelLabel="Go back"
         loading={submitting}
         icon={CheckCircle2}
       >
@@ -285,7 +279,7 @@ export default function ReviewPage() {
           </div>
           <div className="confirm-summary__row">
             <span>Evidence</span>
-            <strong>Group photo</strong>
+            <strong>Individual photo</strong>
           </div>
         </div>
       </ConfirmSheet>

@@ -141,7 +141,7 @@ export default function RecordDetailPanel({ record }) {
         <div className="adm-evidence">
           <div className="adm-evidence__photo" aria-hidden="true">
             <ScanFace size={28} />
-            <span>Demo group photo</span>
+            <span>Demo individual photo</span>
           </div>
           <div className="adm-detail-list adm-detail-list--compact">
             <div>

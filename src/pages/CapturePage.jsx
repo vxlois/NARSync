@@ -3,14 +3,14 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   Camera,
   CheckCircle2,
-  Image as ImageIcon,
   Loader2,
   Lock,
   MapPin,
   RotateCcw,
+  ScanFace,
   ShieldCheck,
 } from 'lucide-react'
-import GroupCameraPreview from '../components/GroupCameraPreview'
+import IndividualCameraPreview from '../components/IndividualCameraPreview'
 import PageHeader from '../components/PageHeader'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
@@ -18,7 +18,7 @@ import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
 import { useToast } from '../context/ToastContext'
 import { getGroupLocation } from '../data/mockData'
-import { formatTimestamp } from '../utils/format'
+import { formatCountdown, getTimeInAccess, getTimeOutAccess } from '../utils/attendance'
 
 const VALID_TYPES = ['time-in', 'time-out']
 
@@ -31,11 +31,9 @@ export default function CapturePage() {
 
   const [captured, setCaptured] = useState(false)
   const [capturedAt, setCapturedAt] = useState(null)
-  const [captureMethod, setCaptureMethod] = useState('camera')
   const [capturing, setCapturing] = useState(false)
   const [locationState, setLocationState] = useState('loading')
-  const [simulateUnavailable, setSimulateUnavailable] = useState(false)
-  const [locationAttempt, setLocationAttempt] = useState(0)
+  const [now, setNow] = useState(() => Date.now())
   const captureTimer = useRef(null)
 
   const isValidType = VALID_TYPES.includes(type)
@@ -47,7 +45,11 @@ export default function CapturePage() {
   const alreadyTimedOut = Boolean(groupRecord?.timeOut)
   const hasValidSchedule = Boolean(group?.session?.valid)
   const retrievedLocation = group ? getGroupLocation(group) : null
-  const attendancePath = group ? `/attendance?group=${group.id}` : '/attendance'
+  const attendancePath = group
+    ? `/attendance/details?group=${group.id}`
+    : '/attendance/details'
+  const timeInAccess = getTimeInAccess(group, now)
+  const timeOutAccess = getTimeOutAccess(group, now)
 
   useEffect(() => {
     return () => {
@@ -56,96 +58,114 @@ export default function CapturePage() {
   }, [])
 
   useEffect(() => {
-    if (!isValidType || simulateUnavailable) return undefined
+    if (!isValidType) return undefined
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [isValidType])
+
+  useEffect(() => {
+    if (!isValidType) return undefined
     const timer = window.setTimeout(() => setLocationState('ready'), 1100)
     return () => window.clearTimeout(timer)
-  }, [isValidType, simulateUnavailable, locationAttempt])
-
-  const toggleUnavailable = () => {
-    const next = !simulateUnavailable
-    setSimulateUnavailable(next)
-    setLocationState(next ? 'unavailable' : 'loading')
-    if (!next) setLocationAttempt((attempt) => attempt + 1)
-  }
-
-  const retryLocation = () => {
-    setSimulateUnavailable(false)
-    setLocationState('loading')
-    setLocationAttempt((attempt) => attempt + 1)
-  }
+  }, [isValidType])
 
   const blockedReason = (() => {
     if (!isValidType) {
       return {
         title: 'Attendance type not found',
-        description: 'This capture link is not valid. Return to attendance to start again.',
+        description: 'This page is not available. Return to attendance to start again.',
       }
     }
     if (!group) {
       return {
         title: 'Group not available',
         description:
-          'Attendance can only be accessed and submitted for your assigned RLE groups.',
+          'Attendance can only be taken for your assigned RLE groups.',
       }
     }
     if (!faceCompleted) {
       return {
-        title: 'Facial registration required',
+        title: 'Add your face photos first',
         description:
-          'Complete your facial registration before submitting attendance. Time In and Time Out stay locked until facial registration is complete.',
+          'Finish your facial registration before taking attendance. Time In and Time Out stay locked until it is complete.',
         actionLabel: 'Open facial registration',
         actionTo: '/face-registration',
       }
     }
     if (!hasValidSchedule) {
       return {
-        title: 'No valid duty schedule',
+        title: 'Your schedule is not ready yet',
         description:
-          'Attendance can only be submitted when your assigned RLE group has a valid duty schedule for today.',
+          'You can take attendance once your RLE Coordinator publishes your duty schedule for today.',
       }
     }
     if (type === 'time-in' && alreadyTimedIn) {
       return {
-        title: 'Time in already recorded',
-        description: 'A valid time in already exists for today. You can proceed to time out after your duty.',
+        title: 'You have already timed in',
+        description:
+          'Your time in for today is saved. Come back here when your duty ends to time out.',
+      }
+    }
+    if (type === 'time-in' && !timeInAccess.hasSchedule) {
+      return {
+        title: 'Your duty time is not set yet',
+        description:
+          'Time In opens 30 minutes before your duty starts. Please check your schedule.',
+      }
+    }
+    if (type === 'time-in' && !timeInAccess.isOpen) {
+      return {
+        title: 'Time In is not open yet',
+        description: `Time In opens at ${timeInAccess.label}, 30 minutes before your ${timeInAccess.startLabel} duty. It opens in ${formatCountdown(
+          timeInAccess.remainingMs,
+        )}.`,
       }
     }
     if (type === 'time-out' && !alreadyTimedIn) {
       return {
-        title: 'Time out is locked',
-        description: 'Record a valid time in for this duty day before submitting your time out.',
+        title: 'Time Out is locked',
+        description: 'Please time in first. Time Out unlocks after you have timed in.',
       }
     }
     if (type === 'time-out' && alreadyTimedOut) {
       return {
-        title: 'Time out already recorded',
-        description: 'Both time in and time out are complete for today. Review the record in your history.',
+        title: 'You have already timed out',
+        description:
+          'Your time in and time out are both saved for today. You can review them in your history.',
+      }
+    }
+    if (type === 'time-out' && !timeOutAccess.hasSchedule) {
+      return {
+        title: 'Your duty end time is not set yet',
+        description:
+          'Time Out opens automatically once your duty end time is published.',
+      }
+    }
+    if (type === 'time-out' && !timeOutAccess.isOpen) {
+      return {
+        title: 'Time Out is not open yet',
+        description: `Time Out opens at ${timeOutAccess.label}, when your duty ends. It opens in ${formatCountdown(
+          timeOutAccess.remainingMs,
+        )}.`,
       }
     }
     return null
   })()
 
-  const handleCapture = (method = 'camera') => {
+  const handleCapture = () => {
     if (capturing || blockedReason) return
     setCapturing(true)
     captureTimer.current = window.setTimeout(() => {
       setCapturedAt(new Date().toISOString())
-      setCaptureMethod(method)
       setCaptured(true)
       setCapturing(false)
-      toast(
-        method === 'image'
-          ? 'Image selected as attendance evidence.'
-          : 'Group photo captured.',
-        'success',
-      )
+      toast('Photo captured and matched to your registered face.', 'success')
     }, 650)
   }
 
   const handleRetake = () => {
     setCaptured(false)
     setCapturedAt(null)
-    setCaptureMethod('camera')
   }
 
   const handleContinue = () => {
@@ -156,8 +176,11 @@ export default function CapturePage() {
       type,
       groupId: group.id,
       groupName: group.name,
+      studentId: student.id,
+      studentName: student.name,
+      faceVerified: true,
       capturedAt,
-      method: captureMethod === 'image' ? 'Image selection' : 'Camera capture',
+      method: 'Camera capture',
       locationAvailable: available,
       locationName: available ? retrievedLocation.name : 'Location unavailable',
       address: available
@@ -175,7 +198,7 @@ export default function CapturePage() {
       <div className="screen">
         <PageHeader
           title={isTimeOut ? 'Time out' : 'Time in'}
-          eyebrow="Attendance capture"
+          eyebrow="Attendance"
           backTo={attendancePath}
           backLabel="Back to attendance"
         />
@@ -196,62 +219,56 @@ export default function CapturePage() {
     )
   }
 
-  const typeLabel = isTimeOut ? 'Time out' : 'Time in'
+  const typeLabel = isTimeOut ? 'Time Out' : 'Time In'
 
   return (
-    <div className="screen">
+    <div className="screen capture-screen">
       <PageHeader
-        title={`${typeLabel} capture`}
-        eyebrow={group ? `${group.name} · Attendance evidence` : 'Attendance evidence'}
+        title={typeLabel}
+        eyebrow={group ? `${group.name} · Take your attendance photo` : 'Take your attendance photo'}
         backTo={attendancePath}
         backLabel="Back to attendance"
       />
 
-      <div className="stepper">
-        <div className="stepper__meta">
-          <span>
-            Step <strong>1</strong> of 2
-          </span>
-          <span>Capture photo</span>
-        </div>
-        <div className="stepper__bars" aria-hidden="true">
-          <span className="stepper__bar is-active" />
-          <span className="stepper__bar" />
+      <div className="capture-guide">
+        <span className="capture-guide__icon" aria-hidden="true">
+          <ScanFace size={19} />
+        </span>
+        <div>
+          <strong>Take your own photo</strong>
+          <p>
+            Find a well-lit spot, keep your face inside the circle, then tap
+            the camera button. We will match it to your registered face.
+          </p>
         </div>
       </div>
 
       <div className="capture-camera-wrap">
-        <GroupCameraPreview captured={captured} capturedAt={capturedAt} />
+        <IndividualCameraPreview
+          captured={captured}
+          capturedAt={capturedAt}
+          studentName={student.name}
+        />
 
         {captured ? (
-          <div className="capture-actions">
-            <Button
-              variant="outline"
-              size="sm"
-              icon={RotateCcw}
-              onClick={handleRetake}
-            >
-              Retake
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              icon={ImageIcon}
-              onClick={() => handleCapture('image')}
-              disabled={capturing}
-            >
-              Use image
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={RotateCcw}
+            onClick={handleRetake}
+            disabled={capturing}
+          >
+            Take another photo
+          </Button>
         ) : (
           <>
             <div className="capture-controls">
               <button
                 type="button"
                 className="shutter-button"
-                onClick={() => handleCapture('camera')}
+                onClick={handleCapture}
                 disabled={capturing}
-                aria-label="Capture group photo"
+                aria-label="Take your attendance photo"
               >
                 {capturing ? (
                   <Loader2 className="spinner" size={25} aria-hidden="true" />
@@ -260,34 +277,17 @@ export default function CapturePage() {
                 )}
               </button>
             </div>
-            <div className="capture-actions">
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={ImageIcon}
-                onClick={() => handleCapture('image')}
-                disabled={capturing}
-              >
-                Select an image instead
-              </Button>
-            </div>
             <p className="capture-controls__note">
-              Tap the shutter to capture a group photo.
+              {capturing
+                ? 'Taking your photo…'
+                : 'Tap the camera button when your face is inside the frame.'}
             </p>
           </>
         )}
 
-        <div className="capture-meta">
-          <div>
-            <p className="capture-meta__label">Attendance type</p>
-            <p className="capture-meta__value">{typeLabel}</p>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <p className="capture-meta__label">Captured at</p>
-            <p className="capture-meta__value">
-              {capturedAt ? formatTimestamp(capturedAt) : 'Not captured yet'}
-            </p>
-          </div>
+        <div className="compare-strip is-match">
+          <ScanFace size={15} aria-hidden="true" />
+          Your photo is matched to your registered facial data.
         </div>
       </div>
 
@@ -298,12 +298,12 @@ export default function CapturePage() {
           </span>
           <div className="location-card__head-text">
             <span className="location-card__label" id="retrieved-location-title">
-              Retrieved location
+              Your location
             </span>
             {locationState === 'loading' && (
               <div className="location-card__spinner" role="status">
                 <Loader2 size={15} aria-hidden="true" />
-                Retrieving location…
+                Checking your location…
               </div>
             )}
             {locationState === 'ready' && (
@@ -312,26 +312,11 @@ export default function CapturePage() {
                 <span className="location-card__address">{retrievedLocation.address}</span>
               </>
             )}
-            {locationState === 'unavailable' && (
-              <>
-                <span className="location-card__name">Location unavailable</span>
-                <span className="location-card__address">
-                  No GPS reading was retrieved.
-                </span>
-              </>
-            )}
           </div>
           <Badge tone={locationState === 'ready' ? 'violet' : 'neutral'}>
-            GPS
+            {locationState === 'ready' ? 'Confirmed' : 'Checking'}
           </Badge>
         </div>
-
-        {locationState === 'ready' && (
-          <div className="location-card__coords">
-            <span>{retrievedLocation.coords.lat.toFixed(5)}, {retrievedLocation.coords.lng.toFixed(5)}</span>
-            <span>±{retrievedLocation.accuracy} m accuracy</span>
-          </div>
-        )}
 
         <div
           className={`compare-strip ${locationState === 'ready' ? 'is-match' : ''}`.trim()}
@@ -339,44 +324,16 @@ export default function CapturePage() {
           {locationState === 'ready' ? (
             <>
               <ShieldCheck size={15} aria-hidden="true" />
-              Matches your assigned duty location · {group.session.facility}
+              This matches your assigned duty location.
             </>
           ) : (
             <>
               <MapPin size={15} aria-hidden="true" />
-              {locationState === 'loading'
-                ? 'Waiting for the location check…'
-                : `Could not compare with ${group.session.facility}. You may still review the evidence.`}
+              Checking your location against {group.session.facility}…
             </>
           )}
         </div>
       </section>
-
-      <details className="demo-panel">
-        <summary>Preview controls</summary>
-        <div className="demo-panel__body">
-          <p>Preview how the app behaves when a location cannot be retrieved.</p>
-          <div className="setting-row" style={{ padding: 0 }}>
-            <div className="setting-row__text">
-              <span className="setting-row__title">Unavailable GPS</span>
-              <span className="setting-row__sub">Preview the missing-location error state.</span>
-            </div>
-            <button
-              type="button"
-              className="switch"
-              role="switch"
-              aria-checked={simulateUnavailable}
-              aria-label="Unavailable GPS"
-              onClick={toggleUnavailable}
-            />
-          </div>
-          {simulateUnavailable && (
-            <Button variant="ghost" size="sm" onClick={retryLocation}>
-              Retry location
-            </Button>
-          )}
-        </div>
-      </details>
 
       <Button
         block
@@ -384,14 +341,14 @@ export default function CapturePage() {
         onClick={handleContinue}
         disabled={!captured || locationState === 'loading'}
       >
-        Continue to review
+        Continue
       </Button>
       <p className="submit-bar__hint">
-        {captured
-          ? locationState === 'loading'
-            ? 'Waiting for the location check…'
-            : 'You will review all evidence before confirming the submission.'
-          : 'Capture or select a group photo to continue.'}
+        {!captured
+          ? 'Take your photo to continue.'
+          : locationState === 'loading'
+            ? 'Checking your location…'
+            : 'Next, check your details and submit your attendance.'}
       </p>
     </div>
   )

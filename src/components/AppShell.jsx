@@ -4,7 +4,15 @@ import { useApp } from '../context/AppContext'
 import BottomNav from './BottomNav'
 import ToastViewport from './ToastViewport'
 
-const NAV_ROUTES = ['/dashboard', '/duty', '/attendance', '/history', '/profile', '/settings']
+const NAV_ROUTES = [
+  '/dashboard',
+  '/duty',
+  '/attendance',
+  '/attendance/details',
+  '/history',
+  '/profile',
+  '/settings',
+]
 
 function shouldShowNav(pathname, isAuthenticated) {
   if (!isAuthenticated) return false

@@ -6,7 +6,12 @@ import {
   FACE_VIEW_KEYS,
   mockStudent,
 } from '../data/mockData'
-import { dateKey } from '../utils/format'
+import {
+  formatPhilippinesTime,
+  getScheduledTimeOut,
+  getTimeInAccess,
+} from '../utils/attendance'
+import { philippinesDateKey } from '../utils/format'
 import { AppContext } from './AppContext'
 
 const emptyFaceViews = () =>
@@ -23,7 +28,7 @@ export default function AppProvider({ children }) {
   const [settings, setSettings] = useState(defaultSettings)
   const [draft, setDraft] = useState(null)
 
-  const today = dateKey()
+  const today = philippinesDateKey()
   const getTodayRecord = useCallback(
     (groupId = mockStudent.group.id) =>
       records.find(
@@ -90,14 +95,37 @@ export default function AppProvider({ children }) {
         )
       }
       if (!group.session.valid) {
-        throw new Error('This group does not have a valid duty schedule for today.')
+        throw new Error(
+          'Your group does not have a published duty schedule for today yet.',
+        )
+      }
+      if (!faceCompleted) {
+        throw new Error(
+          'Please finish your facial registration before taking attendance.',
+        )
       }
 
       const groupRecord = getTodayRecord(group.id)
 
       if (type === 'time-in') {
         if (groupRecord?.timeIn) {
-          throw new Error('A time in record already exists for this group today.')
+          throw new Error('You have already timed in for this duty day.')
+        }
+
+        // Backend enforcement: Time In opens 30 minutes before the published
+        // duty start in Philippine Standard Time (UTC+8). The early window is
+        // calculated from an absolute timestamp, so the device time zone does
+        // not change when students may time in.
+        const timeInAccess = getTimeInAccess(group)
+        if (!timeInAccess.hasSchedule) {
+          throw new Error(
+            'Your duty start time is not available yet. Please check your schedule.',
+          )
+        }
+        if (!timeInAccess.isOpen) {
+          throw new Error(
+            `Time In is not open yet. You can time in starting ${timeInAccess.label} Philippine Standard Time, 30 minutes before your ${timeInAccess.startLabel} duty.`,
+          )
         }
 
         const record = {
@@ -126,10 +154,26 @@ export default function AppProvider({ children }) {
       }
 
       if (!groupRecord?.timeIn) {
-        throw new Error('A valid time in is required before you can time out.')
+        throw new Error('Please time in first before you time out.')
       }
       if (groupRecord.timeOut) {
-        throw new Error('A time out record already exists for this group today.')
+        throw new Error('You have already timed out for this duty day.')
+      }
+
+      // Backend enforcement: time out follows the published shift end in
+      // Philippine Standard Time (UTC+8), regardless of the device time zone.
+      const scheduledTimeOut = getScheduledTimeOut(group)
+      if (!scheduledTimeOut) {
+        throw new Error(
+          'Your duty end time is not available yet. Please check your schedule.',
+        )
+      }
+      if (Date.now() < scheduledTimeOut.getTime()) {
+        throw new Error(
+          `Time Out is not open yet. You can time out starting ${formatPhilippinesTime(
+            scheduledTimeOut,
+          )} Philippine Standard Time, when your duty ends.`,
+        )
       }
 
       const updated = { ...groupRecord, timeOut: evidence }
@@ -138,7 +182,7 @@ export default function AppProvider({ children }) {
       )
       return updated
     },
-    [getTodayRecord, today],
+    [faceCompleted, getTodayRecord, today],
   )
 
   const updateSetting = useCallback((key, value) => {

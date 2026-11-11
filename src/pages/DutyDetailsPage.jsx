@@ -1,25 +1,38 @@
+import { useState } from 'react'
 import {
   CalendarDays,
+  ChevronRight,
   Clock3,
   MapPin,
-  ScanFace,
   Stethoscope,
   UserCheck,
   Users,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import DemoNotice from '../components/DemoNotice'
 import PageHeader from '../components/PageHeader'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
+import Sheet from '../components/ui/Sheet'
 import { useApp } from '../context/AppContext'
 import { formatDateLong } from '../utils/format'
+
+function initials(name) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
 
 export default function DutyDetailsPage() {
   const navigate = useNavigate()
   const { student } = useApp()
   const { duty, group } = student
+  const [groupOpen, setGroupOpen] = useState(false)
+  const groupMembers = group.memberNames ?? []
 
   return (
     <div className="screen">
@@ -29,11 +42,6 @@ export default function DutyDetailsPage() {
         backTo="/dashboard"
         backLabel="Back to dashboard"
       />
-
-      <DemoNotice>
-        Your RLE group and clinical area are assigned by the RLE Coordinator. Students
-        cannot create groups or choose a different duty location in this app.
-      </DemoNotice>
 
       <section className="assignment-hero">
         <div className="assignment-hero__top">
@@ -57,18 +65,22 @@ export default function DutyDetailsPage() {
           Assignment details
         </h2>
         <div className="detail-list">
-          <div className="detail-row">
+          <button
+            type="button"
+            className="detail-row detail-row--action"
+            onClick={() => setGroupOpen(true)}
+            aria-label={`View the members of ${group.name}`}
+          >
             <span className="detail-row__icon" aria-hidden="true">
               <Users size={17} />
             </span>
             <div className="detail-row__text">
               <span className="detail-row__label">RLE group</span>
-              <span className="detail-row__value">
-                {group.name} · {group.members} student nurses
-              </span>
-              <span className="detail-row__sub">Group code {group.code}</span>
+              <span className="detail-row__value">{group.name}</span>
+              <span className="detail-row__sub">Tap to view members</span>
             </div>
-          </div>
+            <ChevronRight className="detail-row__chevron" size={18} aria-hidden="true" />
+          </button>
           <div className="detail-row">
             <span className="detail-row__icon" aria-hidden="true">
               <CalendarDays size={17} />
@@ -120,7 +132,7 @@ export default function DutyDetailsPage() {
           </li>
           <li>
             <span className="guideline-list__num" aria-hidden="true">2</span>
-            Time in and time out using a clear group photo with your assigned group.
+            Time in and time out using your own photo, verified against your registered facial data.
           </li>
           <li>
             <span className="guideline-list__num" aria-hidden="true">3</span>
@@ -132,11 +144,33 @@ export default function DutyDetailsPage() {
       <Button
         variant="secondary"
         block
-        icon={ScanFace}
-        onClick={() => navigate('/face-registration')}
+        icon={Clock3}
+        onClick={() => navigate('/attendance')}
       >
-        Open facial registration
+        Open Today&apos;s Attendance
       </Button>
+
+      <Sheet
+        open={groupOpen}
+        onClose={() => setGroupOpen(false)}
+        title="Group members"
+        icon={Users}
+        tone="violet"
+      >
+        <ul className="group-members__list">
+          {groupMembers.map((member) => (
+            <li className="group-members__item" key={member}>
+              <span className="group-members__avatar" aria-hidden="true">
+                {initials(member)}
+              </span>
+              <span className="group-members__name">
+                {member}
+                {member === student.name ? ' (You)' : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Sheet>
     </div>
   )
 }

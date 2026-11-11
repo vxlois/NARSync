@@ -1,282 +1,134 @@
-import {
-  CalendarDays,
-  Check,
-  ChevronRight,
-  Clock3,
-  Lock,
-  MapPin,
-  ScanFace,
-  Users,
-} from 'lucide-react'
-import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Check, ChevronRight, ScanFace } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import AttendanceActions from '../components/AttendanceActions'
-import GroupDutyCard from '../components/GroupDutyCard'
 import RecordCard from '../components/RecordCard'
 import Badge from '../components/ui/Badge'
+import Button from '../components/ui/Button'
 import { useApp } from '../context/AppContext'
-import { formatDateLong, formatTime } from '../utils/format'
+import { getAttendanceSnapshot, getTimeInAccess } from '../utils/attendance'
 
-function timelineEntry(evidence) {
-  if (!evidence) return null
-  return {
-    time: evidence.at ? formatTime(evidence.at) : evidence.time || 'Recorded',
-    locationName: evidence.locationName || 'Assigned duty location',
+const STEPS = [
+  { id: 1, title: 'Register face' },
+  { id: 2, title: 'Time in' },
+  { id: 3, title: 'Time out' },
+]
+
+function StepMarker({ step, state }) {
+  if (state === 'is-done') {
+    return (
+      <span className={`attendance-step__marker ${state}`} aria-hidden="true">
+        <Check size={11} strokeWidth={3} />
+      </span>
+    )
   }
-}
-
-function TimelineItem({ label, evidence, missingText }) {
-  const entry = timelineEntry(evidence)
 
   return (
-    <div className="attendance-timeline__item">
-      <span className={`attendance-timeline__dot ${entry ? 'is-done' : ''}`.trim()} aria-hidden="true">
-        {entry && <Check size={9} strokeWidth={3} />}
-      </span>
-      <div className="attendance-timeline__text">
-        <div className="attendance-timeline__heading">
-          <strong>{label}</strong>
-          <span>{entry ? entry.time : 'Not recorded'}</span>
-        </div>
-        <p className="attendance-timeline__meta">
-          {entry ? `${entry.locationName} · GPS` : missingText}
-        </p>
-      </div>
-    </div>
+    <span className={`attendance-step__marker ${state}`.trim()} aria-hidden="true">
+      {step}
+    </span>
   )
-}
-
-function SessionNotice({ icon: Icon, title, children, action }) {
-  return (
-    <div className="session-notice">
-      <span className="session-notice__icon" aria-hidden="true">
-        <Icon size={18} />
-      </span>
-      <div className="session-notice__body">
-        <strong>{title}</strong>
-        <p>{children}</p>
-        {action}
-      </div>
-    </div>
-  )
-}
-
-function groupStatus(group, record) {
-  if (!group.session.valid) {
-    return { key: 'planning', label: 'Schedule Planning', tone: 'warning' }
-  }
-  if (record?.timeOut) {
-    return { key: 'completed', label: 'Duty Completed', tone: 'success' }
-  }
-  return { key: 'on-duty', label: 'On Duty', tone: 'violet' }
 }
 
 export default function AttendanceHubPage() {
+  const navigate = useNavigate()
   const { student, records, faceCompleted, getTodayRecord } = useApp()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const requestedGroupId = searchParams.get('group')
-  const initialGroup =
-    student.groups.find((group) => group.id === requestedGroupId) ??
+  const assignedGroup =
     student.groups.find((group) => group.id === student.group.id) ??
     student.groups[0]
-  const [selectedGroupId, setSelectedGroupId] = useState(initialGroup.id)
+  const sessionRecord = getTodayRecord(assignedGroup.id)
+  const groupRecords = records.filter(
+    (record) => (record.groupId || student.group.id) === assignedGroup.id,
+  )
 
-  const selectedGroup =
-    student.groups.find((group) => group.id === selectedGroupId) ?? initialGroup
-  const hasValidSchedule = Boolean(selectedGroup.session.valid)
-  const sessionRecord = getTodayRecord(selectedGroup.id)
-  const selectedStatus = groupStatus(selectedGroup, sessionRecord)
-
-  const recent = records
-    .filter(
-      (record) =>
-        record.date !== student.duty.date &&
-        (record.groupId || student.group.id) === student.group.id,
-    )
-    .slice(0, 2)
-
+  const hasValidSchedule = Boolean(assignedGroup.session.valid)
   const canSubmit = hasValidSchedule && faceCompleted
   const lockReason = !hasValidSchedule
-    ? 'This group is still in schedule planning. Time In and Time Out are locked until the duty schedule is published.'
+    ? 'Time In and Time Out will unlock once your schedule is published.'
     : !faceCompleted
-      ? 'Complete facial registration before submitting attendance.'
+      ? 'Complete facial registration to unlock attendance.'
       : ''
 
-  const selectGroup = (groupId) => {
-    setSelectedGroupId(groupId)
-    setSearchParams({ group: groupId }, { replace: true })
+  const timeInAccess = getTimeInAccess(assignedGroup)
+  const hasTimedIn = Boolean(sessionRecord?.timeIn)
+  const hasTimedOut = Boolean(sessionRecord?.timeOut)
+  const status = hasValidSchedule
+    ? getAttendanceSnapshot(sessionRecord)
+    : { label: 'Schedule not ready', tone: 'neutral' }
+
+  const stepState = {
+    1: faceCompleted ? 'is-done' : 'is-current',
+    2: hasTimedIn ? 'is-done' : faceCompleted ? 'is-current' : '',
+    3: hasTimedOut ? 'is-done' : hasTimedIn ? 'is-current' : '',
+  }
+
+  const stepMeta = {
+    1: 'Required once',
+    2: hasValidSchedule
+      ? `Opens ${timeInAccess.label}, 30 minutes before duty`
+      : 'Waiting for your duty schedule',
+    3: hasTimedOut
+      ? 'Time out recorded'
+      : hasTimedIn
+        ? 'Available now'
+        : 'Available after you time in',
   }
 
   return (
-    <div className="screen">
-      <header className="tab-header">
-        <div>
+    <div className="screen attendance-screen">
+      <header className="attendance-header">
+        <div className="attendance-header__copy">
+          <p className="eyebrow">Today&apos;s duty</p>
           <h1>Attendance</h1>
-          <p>{formatDateLong(student.duty.date)}</p>
         </div>
-        <Badge tone={selectedStatus.tone}>{selectedStatus.label}</Badge>
+        <Badge tone={status.tone} dot>
+          {status.label}
+        </Badge>
       </header>
 
-      <section className="section" aria-labelledby="group-picker-title">
-        <div className="section__head">
-          <h2 className="section__title" id="group-picker-title">
-            Assigned groups
-          </h2>
-          <span className="muted small">Select a group</span>
-        </div>
-        <div className="group-picker" role="radiogroup" aria-label="Select an assigned RLE group">
-          {student.groups.map((group) => (
-            <GroupDutyCard
-              key={group.id}
-              group={group}
-              status={groupStatus(group, getTodayRecord(group.id))}
-              selected={group.id === selectedGroup.id}
-              onSelect={() => selectGroup(group.id)}
-            />
-          ))}
-        </div>
+      {!faceCompleted && (
+        <section className="attendance-register" aria-labelledby="attendance-register-title">
+          <span className="attendance-register__icon" aria-hidden="true">
+            <ScanFace size={22} strokeWidth={1.8} />
+          </span>
+          <div className="attendance-register__copy">
+            <h2 id="attendance-register-title">Register your face to start</h2>
+            <p>Complete registration to unlock Time In and Time Out.</p>
+          </div>
+          <Button block onClick={() => navigate('/face-registration')}>
+            Register face
+          </Button>
+        </section>
+      )}
+
+      <section className="attendance-steps" aria-label="Attendance steps">
+        {STEPS.map((step, index) => {
+          const state = stepState[step.id]
+          return (
+            <div
+              className={`attendance-step ${state}`.trim()}
+              key={step.id}
+              aria-current={state === 'is-current' ? 'step' : undefined}
+            >
+              <StepMarker step={index + 1} state={state} />
+              <div className="attendance-step__copy">
+                <h2>{step.title}</h2>
+                <p>{stepMeta[step.id]}</p>
+              </div>
+            </div>
+          )
+        })}
       </section>
 
-      <section className="session-card" aria-labelledby="session-title">
-        <div className="session-card__head">
-          <div>
-            <p className="eyebrow">Today&apos;s session · {selectedGroup.name}</p>
-            <h2 id="session-title">Group photo attendance</h2>
-            <p className="session-card__date">
-              {selectedGroup.session.shift} · {selectedGroup.session.facility}
-            </p>
-          </div>
-        </div>
+      <AttendanceActions
+        record={sessionRecord}
+        group={assignedGroup}
+        groupId={assignedGroup.id}
+        canSubmit={canSubmit}
+        lockReason={lockReason}
+        variant="dock"
+      />
 
-        <div className="session-details">
-          <div className="session-detail">
-            <span className="session-detail__icon" aria-hidden="true">
-              <CalendarDays size={16} />
-            </span>
-            <span className="session-detail__text">
-              <small>Duty date</small>
-              <strong>{formatDateLong(selectedGroup.session.date)}</strong>
-            </span>
-          </div>
-          <div className="session-detail">
-            <span className="session-detail__icon" aria-hidden="true">
-              <Clock3 size={16} />
-            </span>
-            <span className="session-detail__text">
-              <small>Duty schedule</small>
-              <strong>{selectedGroup.session.shift}</strong>
-              <em>Call time {selectedGroup.session.callTime}</em>
-            </span>
-          </div>
-          <div className="session-detail">
-            <span className="session-detail__icon" aria-hidden="true">
-              <MapPin size={16} />
-            </span>
-            <span className="session-detail__text">
-              <small>Duty location</small>
-              <strong>{selectedGroup.session.facility}</strong>
-              <em>{selectedGroup.session.address}</em>
-            </span>
-          </div>
-          <div className="session-detail">
-            <span className="session-detail__icon" aria-hidden="true">
-              <Users size={16} />
-            </span>
-            <span className="session-detail__text">
-              <small>Clinical area</small>
-              <strong>{selectedGroup.clinicalArea}</strong>
-              <em>{selectedGroup.members} student nurses · {selectedGroup.code}</em>
-            </span>
-          </div>
-        </div>
-
-        {!hasValidSchedule && (
-          <SessionNotice icon={Lock} title="Schedule planning in progress">
-            This group does not have a published duty schedule for today. Time In and
-            Time Out become available once the RLE Coordinator publishes the schedule.
-          </SessionNotice>
-        )}
-
-        {hasValidSchedule && !faceCompleted && (
-          <SessionNotice
-            icon={ScanFace}
-            title="Facial registration required"
-            action={
-              <Link className="text-link" to="/face-registration">
-                Complete facial registration
-              </Link>
-            }
-          >
-            Face registration must be completed before attendance can be submitted. Time In
-            and Time Out stay locked until your facial registration is complete.
-          </SessionNotice>
-        )}
-
-        <div className="attendance-timeline">
-          <TimelineItem
-            label="Time in"
-            evidence={sessionRecord?.timeIn}
-            missingText={
-              hasValidSchedule
-                ? 'Capture a group photo to start your duty.'
-                : 'A published duty schedule is required before attendance.'
-            }
-          />
-          <TimelineItem
-            label="Time out"
-            evidence={sessionRecord?.timeOut}
-            missingText={
-              !hasValidSchedule
-                ? 'A published duty schedule is required before attendance.'
-                : sessionRecord?.timeIn
-                  ? 'Available now that your time in is recorded.'
-                  : 'Requires a valid time in for this duty day.'
-            }
-          />
-        </div>
-
-        <hr className="divider" />
-
-        <AttendanceActions
-          record={sessionRecord}
-          groupId={selectedGroup.id}
-          canSubmit={canSubmit}
-          lockReason={lockReason}
-        />
-      </section>
-
-      <section className="section" aria-labelledby="how-it-works-title">
-        <div className="section__head">
-          <h2 className="section__title" id="how-it-works-title">
-            How attendance works
-          </h2>
-        </div>
-        <div className="how-it-works">
-          <div className="how-it-works__step">
-            <span className="how-it-works__num" aria-hidden="true">1</span>
-            <div className="how-it-works__text">
-              <strong>Capture a group photo</strong>
-              <p>The whole assigned group must be visible in the camera frame.</p>
-            </div>
-          </div>
-          <div className="how-it-works__step">
-            <span className="how-it-works__num" aria-hidden="true">2</span>
-            <div className="how-it-works__text">
-              <strong>Review the evidence</strong>
-              <p>Check the timestamp, retrieved location, and assigned duty location.</p>
-            </div>
-          </div>
-          <div className="how-it-works__step">
-            <span className="how-it-works__num" aria-hidden="true">3</span>
-            <div className="how-it-works__text">
-              <strong>Confirm the submission</strong>
-              <p>Your dashboard and history update after the submission succeeds.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {recent.length > 0 && (
+      {groupRecords.length > 0 && (
         <section className="section" aria-labelledby="recent-attendance-title">
           <div className="section__head">
             <h2 className="section__title" id="recent-attendance-title">
@@ -288,7 +140,7 @@ export default function AttendanceHubPage() {
             </Link>
           </div>
           <div className="record-list">
-            {recent.map((record) => (
+            {groupRecords.slice(0, 3).map((record) => (
               <RecordCard key={record.id} record={record} />
             ))}
           </div>

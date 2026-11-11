@@ -89,13 +89,16 @@ The student, coordinator, preceptor, and roster details are fictional.
 2. On the **Dashboard**, open **Facial registration** and complete the five guided views
    (Front, Left, Right, Up, Down). Use **Fill all five views with demo captures** to speed
    up testing. Finish registration to update the dashboard status.
-3. Tap **Time In** to open the simulated camera. Capture a group photo or select a demo
-   image, wait for the simulated location check, then continue.
+3. Open **Attendance** and tap the **Today's Session** card to see your duty details,
+   group members, and attendance buttons. Tap **Time In** (available 30 minutes before
+   duty) to open the simulated camera. Capture your own photo or select a demo image,
+   wait for the simulated location check, then continue.
 4. **Review** the type, timestamp, simulated GPS, and assigned duty location. Submit and
    confirm in the bottom sheet.
 5. The **Success** screen and attendance history update immediately. Return to the
    dashboard.
-6. **Time Out** is now enabled because a valid time in exists. Complete the same flow.
+6. **Time Out** unlocks automatically at the scheduled shift end in Philippine
+   Standard Time (UTC+8), provided a valid time in exists. Complete the same flow.
 7. Open **History** to search records, filter by status, filter by date, and inspect a
    record's details.
 8. Open **Profile → Settings** to adjust attendance preferences, reset demo data, or sign
@@ -112,6 +115,7 @@ Prototype controls on the capture screen let you preview the unavailable-GPS err
 | Duty assignment | `/duty` |
 | Facial registration | `/face-registration` |
 | Attendance hub | `/attendance` |
+| Attendance details | `/attendance/details` |
 | Time in/out camera | `/attendance/:type/capture` |
 | Time in/out review | `/attendance/:type/review` |
 | Submission success | `/attendance/success/:recordId` |
@@ -203,14 +207,17 @@ src/
   change them.
 - Facial registration becomes available because the demo student already belongs to an
   RLE group.
-- Time Out is disabled until a valid Time In exists for the current duty day.
+- Time In unlocks 30 minutes before the published duty start in Philippine Standard
+  Time (UTC+8) and stays locked before that window.
+- Time Out is disabled until a valid Time In exists and unlocks when the published
+  duty end time arrives.
 - Attendance status is derived from the actual time in and time out records in React
   state. A time in after 7:15 AM is marked late.
 - All state lives in memory. **Reloading the browser resets the session** and returns to
   the login screen. Settings and demo records are not persisted.
 - Simulated GPS coordinates are clearly labeled as demo data. The app never requests or
   fabricates a live GPS reading.
-- Demonstration selfies/group photos are placeholders. No camera permission or image
+- Demonstration individual photos are placeholders. No camera permission or image
   upload is used.
 
 ## Out of scope for this phase

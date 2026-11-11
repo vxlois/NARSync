@@ -16,16 +16,16 @@ import Badge from '../components/ui/Badge'
 import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
 import { statusMeta } from '../utils/attendance'
-import { formatDateMedium, formatTime, greeting } from '../utils/format'
+import { formatDateMedium, formatDateNoWeekday, formatTime, greeting } from '../utils/format'
 
 function isFlagged(record) {
   return record?.flag?.status === 'Open'
 }
 
 function getLatestEvent(record) {
-  if (record?.timeOut?.at) return { label: 'Time out submitted', at: record.timeOut.at }
-  if (record?.timeIn?.at) return { label: 'Time in submitted', at: record.timeIn.at }
-  return { label: 'Attendance not submitted', at: null }
+  if (record?.timeOut?.at) return { label: 'Time out recorded', at: record.timeOut.at }
+  if (record?.timeIn?.at) return { label: 'Time in recorded', at: record.timeIn.at }
+  return { label: 'No attendance submitted', at: null }
 }
 
 export default function DashboardPage() {
@@ -56,7 +56,7 @@ export default function DashboardPage() {
         id: `flag-${flaggedRecord.id}`,
         icon: Flag,
         tone: 'warning',
-        title: 'Attendance flagged for review',
+        title: 'Attendance flagged',
         description: `${formatDateMedium(flaggedRecord.date)} · ${
           flaggedRecord.flag?.reason || 'Verification needed'
         }`,
@@ -69,8 +69,8 @@ export default function DashboardPage() {
         id: 'time-in-reminder',
         icon: LogIn,
         tone: 'violet',
-        title: 'Time in for today’s duty',
-        description: `Submit a group photo at ${student.duty.facility} to start your attendance.`,
+        title: 'Time in for today',
+        description: `Start attendance at ${student.duty.facility}.`,
         to: '/attendance',
       })
     } else if (!todayRecord.timeOut) {
@@ -79,7 +79,7 @@ export default function DashboardPage() {
         icon: Clock3,
         tone: 'violet',
         title: 'Time in recorded',
-        description: `${formatTime(todayRecord.timeIn.at)} · Remember to time out after your shift.`,
+        description: `${formatTime(todayRecord.timeIn.at)} · Time out when your shift ends.`,
         to: '/attendance',
       })
     } else {
@@ -87,8 +87,8 @@ export default function DashboardPage() {
         id: 'attendance-complete',
         icon: CheckCircle2,
         tone: 'success',
-        title: 'Attendance complete for today',
-        description: `Time out recorded at ${formatTime(todayRecord.timeOut.at)}.`,
+        title: 'Attendance complete',
+        description: `Timed out at ${formatTime(todayRecord.timeOut.at)}.`,
         to: `/history/${todayRecord.id}`,
       })
     }
@@ -98,7 +98,7 @@ export default function DashboardPage() {
         id: 'duty-reminder',
         icon: CalendarDays,
         tone: 'neutral',
-        title: `Duty call time ${student.duty.callTime}`,
+        title: `Call time ${student.duty.callTime}`,
         description: `${student.duty.shift} · ${student.duty.facility}`,
         to: '/duty',
       })
@@ -192,13 +192,9 @@ export default function DashboardPage() {
             </span>
             <span className="activity-card__body">
               <span className="activity-card__title">{latestEvent.label}</span>
-              <span className="activity-card__meta">
-                {latestRecord.duty?.facility || 'Clinical duty'} ·{' '}
-                {formatDateMedium(latestRecord.date)}
+              <span className="activity-card__sub">
+                {formatDateNoWeekday(latestRecord.date)}
               </span>
-              {latestEvent.at && (
-                <span className="activity-card__time">{formatTime(latestEvent.at)}</span>
-              )}
             </span>
             <span className="activity-card__end">
               <Badge tone={latestStatus.tone}>{latestStatus.label}</Badge>
