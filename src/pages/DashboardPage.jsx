@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock3,
+  Flag,
   LogIn,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -16,6 +17,10 @@ import EmptyState from '../components/ui/EmptyState'
 import { useApp } from '../context/AppContext'
 import { statusMeta } from '../utils/attendance'
 import { formatDateMedium, formatDateNoWeekday, formatTime, greeting } from '../utils/format'
+
+function isFlagged(record) {
+  return record?.flag?.status === 'Open'
+}
 
 function getLatestEvent(record) {
   if (record?.timeOut?.at) return { label: 'Time out recorded', at: record.timeOut.at }
@@ -36,12 +41,15 @@ export default function DashboardPage() {
   }, [records])
 
   const latestEvent = latestRecord ? getLatestEvent(latestRecord) : null
-  const latestStatus = latestRecord ? statusMeta(latestRecord) : null
+  const latestStatus = latestRecord
+    ? isFlagged(latestRecord)
+      ? { label: 'Flagged for review', tone: 'warning' }
+      : statusMeta(latestRecord)
+    : null
 
   const notifications = useMemo(() => {
     const items = []
 
-<<<<<<< HEAD
     const flaggedRecord = records.find((record) => isFlagged(record))
     if (flaggedRecord) {
       items.push({
@@ -56,8 +64,6 @@ export default function DashboardPage() {
       })
     }
 
-=======
->>>>>>> a277e4d8d714899dc37ac7d1f60aba7212ca5c11
     if (!todayRecord?.timeIn) {
       items.push({
         id: 'time-in-reminder',
@@ -99,7 +105,7 @@ export default function DashboardPage() {
     }
 
     return items.slice(0, 3)
-  }, [settings.reminders, student.duty, todayRecord])
+  }, [records, settings.reminders, student.duty, todayRecord])
 
   return (
     <div className="screen dashboard">
