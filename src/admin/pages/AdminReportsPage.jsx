@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   BarChart3,
   CalendarRange,
+  Clock3,
   Download,
   FileText,
-  Flag,
+  RotateCcw,
   ScanFace,
   Users,
 } from 'lucide-react'
@@ -16,17 +18,25 @@ import {
   shiftDate,
 } from '../adminData'
 import { useToast } from '../../context/ToastContext'
-import { dateKey, formatDateMedium } from '../../utils/format'
-import { downloadCsv } from '../utils/csv'
+import { dateKey, formatDateMedium, formatTimestamp } from '../../utils/format'
+import { downloadCsvRows } from '../utils/csv'
 import EmptyState from '../components/EmptyState'
 import PageIntro from '../components/PageIntro'
 import ProgressBar from '../components/ProgressBar'
 import StatCard from '../components/StatCard'
 
+const PERIOD_OPTIONS = [
+  { key: '7d', label: '7 days' },
+  { key: '30d', label: '30 days' },
+  { key: 'month', label: 'This month' },
+]
+
 export default function AdminReportsPage() {
   const { records, students, groups, schedules, currentUser } = useAdmin()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const today = dateKey()
+  const monthStart = `${today.slice(0, 7)}-01`
   const [fromDate, setFromDate] = useState(shiftDate(today, -6))
   const [toDate, setToDate] = useState(today)
   const [groupId, setGroupId] = useState('all')
@@ -67,7 +77,9 @@ export default function AdminReportsPage() {
 
   const completedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
   const lateRecords = filteredRecords.filter((record) => getRecordStatus(record).key === 'late')
-  const openFlags = filteredRecords.filter((record) => record.flag?.status === 'Open')
+  const missingOutRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'missing-out',
+  )
   const registeredStudents = scopedStudents.filter((student) => student.faceRegistered).length
   const completionRate = scheduledSlots
     ? Math.round((completedRecords.length / scheduledSlots) * 100)
@@ -90,7 +102,9 @@ export default function AdminReportsPage() {
     const groupRecords = filteredRecords.filter((record) => record.groupId === group.id)
     const groupCompleted = groupRecords.filter((record) => record.timeIn && record.timeOut).length
     const groupLate = groupRecords.filter((record) => getRecordStatus(record).key === 'late').length
-    const groupFlags = groupRecords.filter((record) => record.flag?.status === 'Open').length
+    const groupMissingOut = groupRecords.filter(
+      (record) => getRecordStatus(record).key === 'missing-out',
+    ).length
     return {
       group,
       students: groupStudents.length,
@@ -101,50 +115,142 @@ export default function AdminReportsPage() {
       records: groupRecords.length,
       completed: groupCompleted,
       late: groupLate,
-      flags: groupFlags,
+      missingOut: groupMissingOut,
       completionRate: groupSlots ? Math.round((groupCompleted / groupSlots) * 100) : 0,
     }
   })
+
+  const reportTotals = groupRows.reduce(
+    (totals, row) => ({
+      students: totals.students + row.students,
+      registered: totals.registered + row.registered,
+      schedules: totals.schedules + row.schedules,
+      slots: totals.slots + row.slots,
+      completed: totals.completed + row.completed,
+      late: totals.late + row.late,
+      missingOut: totals.missingOut + row.missingOut,
+    }),
+    { students: 0, registered: 0, schedules: 0, slots: 0, completed: 0, late: 0, missingOut: 0 },
+  )
+  const totalRegistrationRate = reportTotals.students
+    ? Math.round((reportTotals.registered / reportTotals.students) * 100)
+    : 0
+  const totalCompletionRate = reportTotals.slots
+    ? Math.round((reportTotals.completed / reportTotals.slots) * 100)
+    : 0
 
   const rangeValid = fromDate <= toDate
   const activeRangeLabel = rangeValid
     ? `${formatDateMedium(fromDate)} – ${formatDateMedium(toDate)}`
     : 'Invalid date range'
 
+  const applyPeriod = (key) => {
+    if (key === '7d') {
+      setFromDate(shiftDate(today, -6))
+      setToDate(today)
+    } else if (key === '30d') {
+      setFromDate(shiftDate(today, -29))
+      setToDate(today)
+    } else {
+      setFromDate(monthStart)
+      setToDate(today)
+    }
+  }
+
+  const activePeriod =
+    fromDate === shiftDate(today, -6) && toDate === today
+      ? '7d'
+      : fromDate === shiftDate(today, -29) && toDate === today
+        ? '30d'
+        : fromDate === monthStart && toDate === today
+          ? 'month'
+          : ''
+
+  const resetFilters = () => {
+    setFromDate(shiftDate(today, -6))
+    setToDate(today)
+    setGroupId('all')
+  }
+
   const exportReport = () => {
     if (!rangeValid) {
-      toast('Choose a valid date range before exporting.', 'danger')
+      toast('Choose a valid date range.', 'danger')
       return
     }
-    downloadCsv(
-      `narsync-rle-report-${fromDate}-to-${toDate}.csv`,
-      ['Group', 'Students', 'Face registered', 'Registration %', 'Schedules', 'Scheduled slots', 'Records', 'Completed', 'Late', 'Open flags', 'Completion %'],
-      groupRows.map((row) => [
+    const scopeLabel =
+      groupId === 'all' ? 'All groups' : groups.find((group) => group.id === groupId)?.name || '—'
+    downloadCsvRows(`narsync-report-${fromDate}-to-${toDate}.csv`, [
+      ['NARSync RLE Attendance Report'],
+      ['Period', activeRangeLabel],
+      ['Group', scopeLabel],
+      ['Prepared by', currentUser.label],
+      ['Generated', formatTimestamp(new Date().toISOString())],
+      [],
+      ['Summary'],
+      ['Scheduled slots', scheduledSlots],
+      ['Completed', completedRecords.length],
+      ['Late', lateRecords.length],
+      ['Missing time out', missingOutRecords.length],
+      ['Completion rate', `${completionRate}%`],
+      ['Face registration', `${registeredStudents} of ${scopedStudents.length} (${registrationRate}%)`],
+      [],
+      ['Group summary'],
+      [
+        'Group',
+        'Students',
+        'Registered',
+        'Registration %',
+        'Schedules',
+        'Scheduled slots',
+        'Completed',
+        'Late',
+        'Missing time out',
+        'Completion %',
+      ],
+      ...groupRows.map((row) => [
         row.group.name,
         row.students,
         row.registered,
         row.registrationRate,
         row.schedules,
         row.slots,
-        row.records,
         row.completed,
         row.late,
-        row.flags,
+        row.missingOut,
         row.completionRate,
       ]),
-    )
-    toast('RLE summary report exported as CSV.', 'success')
+      [
+        'Total',
+        reportTotals.students,
+        reportTotals.registered,
+        totalRegistrationRate,
+        reportTotals.schedules,
+        reportTotals.slots,
+        reportTotals.completed,
+        reportTotals.late,
+        reportTotals.missingOut,
+        totalCompletionRate,
+      ],
+    ])
+    toast('Report exported.', 'success')
   }
 
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Oversight reporting"
-        title="Reports"
         meta={
           <>
-            <span className="adm-meta-pill"><strong>{activeRangeLabel}</strong></span>
-            <span className="adm-meta-pill">Prepared for <strong>{currentUser.label}</strong></span>
+            {PERIOD_OPTIONS.map((period) => (
+              <button
+                key={period.key}
+                type="button"
+                className={`adm-quick-filter ${activePeriod === period.key ? 'is-active' : ''}`}
+                onClick={() => applyPeriod(period.key)}
+                aria-pressed={activePeriod === period.key}
+              >
+                {period.label}
+              </button>
+            ))}
           </>
         }
         actions={
@@ -155,7 +261,7 @@ export default function AdminReportsPage() {
             disabled={!rangeValid}
           >
             <Download size={16} aria-hidden="true" />
-            Export report
+            Export CSV
           </button>
         }
       />
@@ -164,9 +270,12 @@ export default function AdminReportsPage() {
         <div className="adm-filter-card__head">
           <span>
             <CalendarRange size={15} aria-hidden="true" />
-            Reporting period
+            Filters
           </span>
-          <span className={`adm-report-range ${rangeValid ? '' : 'is-invalid'}`}>{activeRangeLabel}</span>
+          <button type="button" className="adm-text-btn" onClick={resetFilters}>
+            <RotateCcw size={14} aria-hidden="true" />
+            Reset
+          </button>
         </div>
         <div className="adm-filters">
           <label className="adm-field adm-field--inline">
@@ -180,7 +289,7 @@ export default function AdminReportsPage() {
           <label className="adm-field adm-field--inline">
             <span>Group</span>
             <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-              <option value="all">All RLE groups</option>
+              <option value="all">All groups</option>
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>{group.name}</option>
               ))}
@@ -192,7 +301,7 @@ export default function AdminReportsPage() {
       {!rangeValid ? (
         <EmptyState
           icon={CalendarRange}
-          title="Choose a valid reporting period"
+          title="Invalid date range"
           description="The start date must be on or before the end date."
         />
       ) : (
@@ -200,37 +309,37 @@ export default function AdminReportsPage() {
           <section className="adm-stat-grid" aria-label="Report summary">
             <StatCard
               icon={Users}
-              label="Scheduled attendance slots"
+              label="Scheduled slots"
               value={scheduledSlots}
-              note={`${filteredSchedules.length} valid duty schedules in this period`}
+              note={`${filteredSchedules.length} schedules`}
               tone="blue"
             />
             <StatCard
               icon={FileText}
-              label="Completed attendance"
+              label="Completed"
               value={completedRecords.length}
-              note={`${completionRate}% completion across scheduled slots`}
+              note={`${completionRate}% completion`}
               tone="green"
             />
             <StatCard
               icon={BarChart3}
-              label="Late submissions"
+              label="Late"
               value={lateRecords.length}
-              note={`${lateRate}% of submitted attendance records`}
+              note={`${lateRate}% of records`}
               tone="amber"
             />
             <StatCard
-              icon={Flag}
-              label="Open verification flags"
-              value={openFlags.length}
-              note={`${filteredRecords.length} total records in this period`}
+              icon={Clock3}
+              label="Missing time out"
+              value={missingOutRecords.length}
+              note={`${filteredRecords.length} records`}
               tone="red"
             />
             <StatCard
               icon={ScanFace}
-              label="Facial registration coverage"
+              label="Face registration"
               value={`${registrationRate}%`}
-              note={`${registeredStudents} of ${scopedStudents.length} assigned students registered`}
+              note={`${registeredStudents} of ${scopedStudents.length} students`}
               tone="violet"
             />
           </section>
@@ -239,10 +348,9 @@ export default function AdminReportsPage() {
             <section className="adm-card" aria-labelledby="report-group-chart-title">
               <div className="adm-card__head">
                 <div>
-                  <p className="adm-eyebrow">By group</p>
-                  <h3 id="report-group-chart-title">Attendance completion</h3>
+                  <h3 id="report-group-chart-title">Completion by group</h3>
                 </div>
-                <span className="adm-meta-pill"><strong>{completionRate}%</strong> overall</span>
+                <span className="adm-meta-pill"><strong>{completionRate}%</strong></span>
               </div>
               {groupRows.length ? (
                 <div className="adm-report-bars">
@@ -251,7 +359,7 @@ export default function AdminReportsPage() {
                       <div className="adm-report-bar__head">
                         <span>
                           <strong>{row.group.name}</strong>
-                          <small>{row.completed} of {row.slots} slots completed</small>
+                          <small>{row.completed}/{row.slots} slots</small>
                         </span>
                         <strong>{row.completionRate}%</strong>
                       </div>
@@ -266,8 +374,8 @@ export default function AdminReportsPage() {
               ) : (
                 <EmptyState
                   icon={BarChart3}
-                  title="No group data"
-                  description="No groups match the selected report filters."
+                  title="No groups"
+                  description="No groups match these filters."
                 />
               )}
             </section>
@@ -275,8 +383,7 @@ export default function AdminReportsPage() {
             <section className="adm-card" aria-labelledby="report-registration-title">
               <div className="adm-card__head">
                 <div>
-                  <p className="adm-eyebrow">Registration readiness</p>
-                  <h3 id="report-registration-title">Facial registration coverage</h3>
+                  <h3 id="report-registration-title">Face registration</h3>
                 </div>
               </div>
               {groupRows.length ? (
@@ -285,64 +392,64 @@ export default function AdminReportsPage() {
                     <div className="adm-report-list__row" key={row.group.id}>
                       <span>
                         <strong>{row.group.name}</strong>
-                        <small>{row.registered} of {row.students} members registered</small>
+                        <small>{row.registered}/{row.students} registered</small>
                       </span>
                       <span className="adm-report-list__value">{row.registrationRate}%</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <EmptyState icon={Users} title="No registration data" />
+                <EmptyState icon={Users} title="No data" />
               )}
-              <div className="adm-inline-note">
-                <ScanFace size={16} aria-hidden="true" />
-                <p>
-                  Students register their own faces after group assignment. The report counts
-                  completed registrations only.
-                </p>
-              </div>
             </section>
           </div>
 
           <section className="adm-card adm-card--table" aria-labelledby="report-table-title">
-            <div className="adm-card__head">
+            <div className="adm-table-head">
               <div>
-                <p className="adm-eyebrow">Detailed summary</p>
-                <h3 id="report-table-title">Group attendance summary</h3>
+                <h3 id="report-table-title">Groups</h3>
+                <p>{groupRows.length} groups</p>
               </div>
-              <span className="adm-meta-pill">{activeRangeLabel}</span>
             </div>
             {groupRows.length ? (
               <div className="adm-table-wrap">
-                <table className="adm-table">
+                <table className="adm-table adm-table--fit">
                   <thead>
                     <tr>
                       <th>Group</th>
                       <th>Students</th>
-                      <th>Registration</th>
                       <th>Schedules</th>
-                      <th>Scheduled slots</th>
                       <th>Completed</th>
                       <th>Late</th>
-                      <th>Open flags</th>
-                      <th>Completion rate</th>
+                      <th>Missing out</th>
+                      <th>Completion</th>
                     </tr>
                   </thead>
                   <tbody>
                     {groupRows.map((row) => (
-                      <tr key={row.group.id}>
+                      <tr
+                        key={row.group.id}
+                        className="adm-table__row--clickable"
+                        onClick={() => navigate(`/admin/groups/${row.group.id}`)}
+                      >
+                        <td><strong>{row.group.name}</strong></td>
                         <td>
-                          <span className="adm-group-cell">
-                            <strong>{row.group.name}</strong>
-                          </span>
+                          <div className="adm-cell-stack">
+                            <strong>{row.students}</strong>
+                            <span className="adm-cell-sub">
+                              {row.registered} registered · {row.registrationRate}%
+                            </span>
+                          </div>
                         </td>
-                        <td>{row.students}</td>
-                        <td>{row.registered} / {row.students} ({row.registrationRate}%)</td>
-                        <td>{row.schedules}</td>
-                        <td>{row.slots}</td>
+                        <td>
+                          <div className="adm-cell-stack">
+                            <strong>{row.schedules}</strong>
+                            <span className="adm-cell-sub">{row.slots} slots</span>
+                          </div>
+                        </td>
                         <td>{row.completed}</td>
                         <td>{row.late}</td>
-                        <td>{row.flags}</td>
+                        <td>{row.missingOut}</td>
                         <td><strong>{row.completionRate}%</strong></td>
                       </tr>
                     ))}
@@ -350,17 +457,9 @@ export default function AdminReportsPage() {
                 </table>
               </div>
             ) : (
-              <EmptyState title="No report data" description="Adjust the reporting period or group filter." />
+              <EmptyState title="No data" description="Adjust the filters." />
             )}
           </section>
-
-          <div className="adm-inline-note">
-            <FileText size={16} aria-hidden="true" />
-            <p>
-              This report is generated from the prototype’s fictional attendance, schedule, and
-              registration data. No exported file is sent to a server.
-            </p>
-          </div>
         </>
       )}
     </div>

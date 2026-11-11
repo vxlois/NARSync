@@ -29,6 +29,8 @@ export default function Drawer({
 
   if (!open) return null
 
+  const container = document.querySelector('.admin-app') || document.body
+
   return createPortal(
     <div className="adm-drawer-layer">
       <button
@@ -62,6 +64,6 @@ export default function Drawer({
         {footer && <footer className="adm-drawer__foot">{footer}</footer>}
       </aside>
     </div>,
-    document.body,
+    container,
   )
 }

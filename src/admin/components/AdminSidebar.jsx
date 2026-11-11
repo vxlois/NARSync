@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { GraduationCap, ShieldCheck } from 'lucide-react'
 import { useAdmin } from '../AdminContext'
 import Avatar from './Avatar'
+import SidebarIllustration from './SidebarIllustration'
 import { ADMIN_NAV } from './adminNav'
 
 export default function AdminSidebar({ open, onClose }) {
-  const { currentUser, canManage, openFlagCount } = useAdmin()
+  const { currentUser } = useAdmin()
 
   return (
     <>
@@ -22,25 +22,18 @@ export default function AdminSidebar({ open, onClose }) {
           </span>
           <span className="adm-brand__copy">
             <strong>NARSync</strong>
-            <span>RLE Administration</span>
           </span>
         </div>
 
-        <div className="adm-workspace">
-          <span className="adm-workspace__icon" aria-hidden="true">
-            <GraduationCap size={16} />
-          </span>
-          <span>
-            <strong>Nursing Department</strong>
-            <small>Bicol University Polangui</small>
-          </span>
+        <div className="adm-sidebar__hero">
+          <SidebarIllustration />
         </div>
+
 
         <nav className="adm-nav">
           <p className="adm-nav__label">Workspace</p>
           {ADMIN_NAV.map((item) => {
             const Icon = item.icon
-            const badge = item.badge === 'flags' ? openFlagCount : null
             return (
               <NavLink
                 key={item.to}
@@ -51,7 +44,6 @@ export default function AdminSidebar({ open, onClose }) {
               >
                 <Icon size={18} aria-hidden="true" />
                 <span>{item.label}</span>
-                {badge > 0 && <span className="adm-nav__badge">{badge}</span>}
               </NavLink>
             )
           })}
@@ -65,8 +57,6 @@ export default function AdminSidebar({ open, onClose }) {
               <span>{currentUser.label}</span>
             </div>
           </div>
-          <p className="adm-access-note">
-          </p>
         </div>
       </aside>
     </>

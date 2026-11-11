@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  AlertTriangle,
   ArrowRight,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  Flag,
+  ClipboardList,
+  Clock3,
   LogIn,
   RotateCcw,
-  SlidersHorizontal,
   UserCheck,
-  Users,
 } from 'lucide-react'
 import { useAdmin } from '../AdminContext'
 import {
@@ -33,6 +31,7 @@ import StatCard from '../components/StatCard'
 import StatusBadge from '../components/StatusBadge'
 
 const DATE_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MISSING_LIMIT = 6
 
 export default function AdminDashboardPage() {
   const { students, groups, schedules, locations, records } = useAdmin()
@@ -47,115 +46,80 @@ export default function AdminDashboardPage() {
     [students],
   )
 
-  const scopedStudents = useMemo(
-    () =>
-      students.filter(
-        (student) =>
-          (groupId === 'all' || student.groupId === groupId) &&
-          (yearLevel === 'all' || student.yearLevel === yearLevel),
-      ),
-    [students, groupId, yearLevel],
-  )
-
   const scheduledIds = useMemo(
-    () =>
-      getScheduledStudentsForDate({
-        schedules,
-        students,
-        date,
-        groupId,
-        yearLevel,
-        locationId,
-      }),
+    () => getScheduledStudentsForDate({ schedules, students, date, groupId, yearLevel, locationId }),
     [schedules, students, date, groupId, yearLevel, locationId],
   )
 
+  const matchesFilters = (record, recordDate) => {
+    const student = studentById[record.studentId]
+    if (record.date !== recordDate || !student) return false
+    if (groupId !== 'all' && student.groupId !== groupId) return false
+    if (yearLevel !== 'all' && student.yearLevel !== yearLevel) return false
+    if (locationId !== 'all' && record.locationId !== locationId) return false
+    return true
+  }
+
   const filteredRecords = useMemo(
-    () =>
-      records.filter((record) => {
-        const student = studentById[record.studentId]
-        if (record.date !== date) return false
-        if (!student) return false
-        if (groupId !== 'all' && student.groupId !== groupId) return false
-        if (yearLevel !== 'all' && student.yearLevel !== yearLevel) return false
-        if (locationId !== 'all' && record.locationId !== locationId) return false
-        return true
-      }),
+    () => records.filter((record) => matchesFilters(record, date)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [records, date, groupId, yearLevel, locationId, studentById],
   )
 
   const timedInRecords = filteredRecords.filter((record) => record.timeIn)
-  const completedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
-  const flaggedRecords = filteredRecords.filter((record) => record.flag?.status === 'Open')
-  const onDuty = Math.max(0, timedInRecords.length - completedRecords.length)
-  const notTimedIn = Math.max(0, scheduledIds.size - timedInRecords.length)
-  const completionRate = scheduledIds.size
-    ? Math.round((completedRecords.length / scheduledIds.size) * 100)
-    : 0
+  const attendedRecords = filteredRecords.filter((record) => record.timeIn && record.timeOut)
+  const completedRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'completed',
+  )
+  const lateRecords = filteredRecords.filter(
+    (record) => getRecordStatus(record).key === 'late',
+  )
+  const attentionRecords = filteredRecords
+    .filter((record) => ['late', 'missing-out'].includes(getRecordStatus(record).key))
+    .sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1))
+  const onDuty = Math.max(0, timedInRecords.length - attendedRecords.length)
 
-  const daySchedules = schedules.filter((schedule) => {
-    if (schedule.date !== date) return false
-    if (groupId !== 'all' && schedule.groupId !== groupId) return false
-    if (locationId !== 'all' && schedule.locationId !== locationId) return false
-    return true
-  })
+  const missingStudents = useMemo(() => {
+    const timedIn = new Set(timedInRecords.map((record) => record.studentId))
+    return [...scheduledIds]
+      .filter((id) => !timedIn.has(id))
+      .map((id) => studentById[id])
+      .filter(Boolean)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduledIds, filteredRecords, studentById])
+
+  const total = scheduledIds.size
+  const percent = (value) => (total ? (value / total) * 100 : 0)
+  const completionRate = Math.round(percent(attendedRecords.length))
+  const onTimeRate = Math.round(percent(completedRecords.length))
 
   const trend = useMemo(() => {
     const days = []
     for (let offset = -6; offset <= 0; offset += 1) {
       const trendDate = shiftDate(date, offset)
-      const trendScheduled = getScheduledStudentsForDate({
-        schedules,
-        students,
-        date: trendDate,
-        groupId,
-        yearLevel,
-        locationId,
-      })
-      const trendRecords = records.filter((record) => {
-        const student = studentById[record.studentId]
-        if (record.date !== trendDate) return false
-        if (!student) return false
-        if (groupId !== 'all' && student.groupId !== groupId) return false
-        if (yearLevel !== 'all' && student.yearLevel !== yearLevel) return false
-        if (locationId !== 'all' && record.locationId !== locationId) return false
-        return true
+      const scheduled = getScheduledStudentsForDate({
+        schedules, students, date: trendDate, groupId, yearLevel, locationId,
       })
       const completed = new Set(
-        trendRecords
-          .filter((record) => record.timeIn && record.timeOut)
+        records
+          .filter((record) => matchesFilters(record, trendDate) && record.timeIn && record.timeOut)
           .map((record) => record.studentId),
       ).size
       days.push({
         date: trendDate,
         label: DATE_LABELS[new Date(`${trendDate}T12:00:00`).getDay()],
-        percent: trendScheduled.size ? Math.round((completed / trendScheduled.size) * 100) : 0,
-        completed,
-        scheduled: trendScheduled.size,
+        percent: scheduled.size ? Math.round((completed / scheduled.size) * 100) : 0,
         isSelected: trendDate === date,
       })
     }
-    const average = Math.round(days.reduce((total, day) => total + day.percent, 0) / days.length)
-    return { days, average }
+    return days
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, groupId, yearLevel, locationId, schedules, students, records, studentById])
 
   const recentSubmissions = [...filteredRecords]
     .sort((a, b) => (a.submittedAt < b.submittedAt ? 1 : -1))
     .slice(0, 5)
-  const recentFlags = [...filteredRecords]
-    .filter((record) => record.flag)
-    .sort((a, b) => (a.flag.raisedAt < b.flag.raisedAt ? 1 : -1))
-    .slice(0, 4)
 
-  const resetFilters = () => {
-    setDate(dateKey())
-    setGroupId('all')
-    setYearLevel('all')
-    setLocationId('all')
-  }
-
-  // Builds a query string only from filters that are actively applied, so a
-  // drill-down never sends empty defaults to the destination page.
   const buildQuery = (params) => {
     const search = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
@@ -165,279 +129,165 @@ export default function AdminDashboardPage() {
     return query ? `?${query}` : ''
   }
 
-  const studentsHref = `/admin/students${buildQuery({ group: groupId, year: yearLevel })}`
+  const filters = { date, group: groupId, year: yearLevel, location: locationId }
   const schedulesHref = `/admin/schedules${buildQuery({ date, group: groupId, location: locationId })}`
-  const attendanceHref = `/admin/attendance${buildQuery({
-    date,
-    group: groupId,
-    year: yearLevel,
-    location: locationId,
-  })}`
-  const flaggedHref = `/admin/flagged${buildQuery({ date, status: 'Open', group: groupId })}`
+  const attendanceHref = `/admin/attendance${buildQuery(filters)}`
+  const lateHref = `/admin/attendance${buildQuery({ ...filters, status: 'late' })}`
 
-  const activeFilterCount = [
-    groupId !== 'all',
-    yearLevel !== 'all',
-    locationId !== 'all',
-    date !== dateKey(),
-  ].filter(Boolean).length
+  const isFiltered = groupId !== 'all' || yearLevel !== 'all' || locationId !== 'all' || date !== dateKey()
+  const resetFilters = () => {
+    setDate(dateKey())
+    setGroupId('all')
+    setYearLevel('all')
+    setLocationId('all')
+  }
 
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Attendance command center"
-        title="Attendance at a glance"
+        title={date === dateKey() ? 'Today' : formatDateLong(date)}
         actions={
           <>
-            <Link to={flaggedHref} className="adm-btn adm-btn--secondary">
-              <Flag size={16} aria-hidden="true" />
-              Review flags
-              {flaggedRecords.length > 0 && <span className="adm-btn__count">{flaggedRecords.length}</span>}
+            <Link to={attendanceHref} className="adm-btn adm-btn--secondary">
+              <ClipboardList size={16} aria-hidden="true" />
+              Attendance
+              {attentionRecords.length > 0 && (
+                <span className="adm-btn__count">{attentionRecords.length}</span>
+              )}
             </Link>
             <Link to="/admin/reports" className="adm-btn adm-btn--primary">
-              Open reports
+              Reports
               <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </>
         }
       />
 
-      <section className="adm-filter-card" aria-label="Dashboard filters">
-        <div className="adm-filter-card__head">
-          <span>
-            <SlidersHorizontal size={15} aria-hidden="true" />
-            Filters
-            {activeFilterCount > 0 && <span className="adm-filter-count">{activeFilterCount} active</span>}
-          </span>
+      <div className="adm-toolbar" role="group" aria-label="Dashboard filters">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date" />
+        <select value={groupId} onChange={(e) => setGroupId(e.target.value)} aria-label="Group">
+          <option value="all">All groups</option>
+          {groups.map((group) => (
+            <option key={group.id} value={group.id}>{group.name}</option>
+          ))}
+        </select>
+        <select value={yearLevel} onChange={(e) => setYearLevel(e.target.value)} aria-label="Year level">
+          <option value="all">All years</option>
+          {YEAR_LEVELS.map((level) => (
+            <option key={level} value={level}>{level}</option>
+          ))}
+        </select>
+        <select value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
+          <option value="all">All locations</option>
+          {locations.map((location) => (
+            <option key={location.id} value={location.id}>{location.name}</option>
+          ))}
+        </select>
+        {isFiltered && (
           <button type="button" className="adm-text-btn" onClick={resetFilters}>
-            <RotateCcw size={14} aria-hidden="true" />
-            Reset
+            <RotateCcw size={14} aria-hidden="true" /> Reset
           </button>
-        </div>
-        <div className="adm-filters">
-          <label className="adm-field adm-field--inline">
-            <span>Date</span>
-            <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-          </label>
-          <label className="adm-field adm-field--inline">
-            <span>Group</span>
-            <select value={groupId} onChange={(event) => setGroupId(event.target.value)}>
-              <option value="all">All groups</option>
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="adm-field adm-field--inline">
-            <span>Year level</span>
-            <select value={yearLevel} onChange={(event) => setYearLevel(event.target.value)}>
-              <option value="all">All year levels</option>
-              {YEAR_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="adm-field adm-field--inline">
-            <span>Clinical location</span>
-            <select value={locationId} onChange={(event) => setLocationId(event.target.value)}>
-              <option value="all">All locations</option>
-              {locations.map((location) => (
-                <option key={location.id} value={location.id}>
-                  {location.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </section>
+        )}
+      </div>
 
-      <section className="adm-stat-grid" aria-label="Attendance summary">
-        <StatCard
-          icon={Users}
-          label="Total registered students"
-          value={scopedStudents.length}
-          note={`${groups.filter((group) => group.status === 'Active').length} active RLE groups`}
-          tone="violet"
-          to={studentsHref}
-          hint="Open the student roster with the current group and year level filters"
-        />
+      <section className="adm-stat-grid adm-stat-grid--4" aria-label="Summary">
         <StatCard
           icon={CalendarDays}
-          label="Students scheduled for duty"
-          value={scheduledIds.size}
-          note={`${daySchedules.length} duty ${daySchedules.length === 1 ? 'schedule' : 'schedules'} on ${formatDateLong(date)}`}
+          label="Scheduled"
+          value={total}
           tone="blue"
           to={schedulesHref}
-          hint={`Open duty schedules for ${formatDateLong(date)}`}
+          hint="Open duty schedules"
         />
         <StatCard
           icon={LogIn}
-          label="Students timed in"
+          label="Timed in"
           value={timedInRecords.length}
-          note={
-            scheduledIds.size
-              ? `${Math.round((timedInRecords.length / scheduledIds.size) * 100)}% of scheduled students`
-              : 'No scheduled students for this selection'
-          }
+          note={`of ${total}`}
           tone="teal"
-          to={`/admin/attendance${buildQuery({
-            date,
-            group: groupId,
-            year: yearLevel,
-            location: locationId,
-            view: 'timed-in',
-          })}`}
-          hint={`Open students timed in on ${formatDateLong(date)}`}
+          to={attendanceHref}
+          hint="Open timed-in records"
         />
         <StatCard
           icon={ClipboardCheck}
-          label="Completed attendance"
+          label="Completed"
           value={completedRecords.length}
-          note={`${completionRate}% completion rate for the selected date`}
+          note={`${onTimeRate}% on time`}
           tone="green"
-          to={`/admin/attendance${buildQuery({
-            date,
-            group: groupId,
-            year: yearLevel,
-            location: locationId,
-            view: 'completed',
-          })}`}
-          hint={`Open completed attendance records for ${formatDateLong(date)}`}
+          to={`/admin/attendance${buildQuery({ ...filters, status: 'completed' })}`}
+          hint="Open completed records"
         />
         <StatCard
-          icon={Flag}
-          label="Records flagged for review"
-          value={flaggedRecords.length}
-          note={flaggedRecords.length ? 'Coordinator action required' : 'No open flags for this selection'}
-          tone="red"
-          to={flaggedHref}
-          hint={`Open flagged records for ${formatDateLong(date)}`}
+          icon={Clock3}
+          label="Late"
+          value={lateRecords.length}
+          tone="amber"
+          to={lateHref}
+          hint="Open late attendance records"
         />
       </section>
 
-      <div className="adm-dashboard-grid">
-        <section className="adm-card adm-attendance-summary" aria-labelledby="day-summary-title">
+      <section className="adm-card adm-progress-hero" aria-label="Attendance progress">
+        <div className="adm-progress-hero__top">
+          <strong>{completionRate}%</strong>
+          <span>complete</span>
+          <Link to={attendanceHref} className="adm-text-link">
+            All records <ArrowRight size={14} aria-hidden="true" />
+          </Link>
+        </div>
+        <div
+          className="adm-segmented-bar"
+          role="img"
+          aria-label={`${attendedRecords.length} completed, ${onDuty} on duty, ${missingStudents.length} not timed in`}
+        >
+          <span className="adm-segmented-bar__part adm-segmented-bar__part--completed" style={{ width: `${percent(attendedRecords.length)}%` }} />
+          <span className="adm-segmented-bar__part adm-segmented-bar__part--ontime" style={{ width: `${percent(onDuty)}%` }} />
+          <span className="adm-segmented-bar__part adm-segmented-bar__part--missing" style={{ width: `${percent(missingStudents.length)}%` }} />
+        </div>
+        <div className="adm-legend">
+          <span><i className="adm-legend__dot adm-legend__dot--completed" />{attendedRecords.length} Completed</span>
+          <span><i className="adm-legend__dot adm-legend__dot--ontime" />{onDuty} On duty</span>
+          <span><i className="adm-legend__dot adm-legend__dot--missing" />{missingStudents.length} Not timed in</span>
+        </div>
+      </section>
+
+      <div className="adm-dashboard-grid adm-dashboard-grid--even">
+        <section className="adm-card" aria-labelledby="missing-title">
           <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">Selected date</p>
-              <h3 id="day-summary-title">{formatDateLong(date)}</h3>
-            </div>
-            <StatusBadge tone={completionRate >= 75 ? 'success' : completionRate >= 50 ? 'warning' : 'neutral'} dot>
-              {completionRate}% complete
-            </StatusBadge>
+            <h3 id="missing-title">Not timed in</h3>
+            <span className="adm-meta-pill"><strong>{missingStudents.length}</strong></span>
           </div>
-
-          <div className="adm-attendance-summary__numbers">
-            <div>
-              <strong>{completedRecords.length}</strong>
-              <span>Completed</span>
-            </div>
-            <div>
-              <strong>{onDuty}</strong>
-              <span>On duty</span>
-            </div>
-            <div>
-              <strong>{notTimedIn}</strong>
-              <span>Not timed in</span>
-            </div>
-            <div>
-              <strong>{flaggedRecords.length}</strong>
-              <span>Flagged</span>
-            </div>
-          </div>
-
-          <div
-            className="adm-segmented-bar"
-            role="img"
-            aria-label={`${completedRecords.length} completed, ${onDuty} on duty, ${notTimedIn} not timed in`}
-          >
-            <span
-              className="adm-segmented-bar__part adm-segmented-bar__part--completed"
-              style={{ width: `${scheduledIds.size ? (completedRecords.length / scheduledIds.size) * 100 : 0}%` }}
-            />
-            <span
-              className="adm-segmented-bar__part adm-segmented-bar__part--ontime"
-              style={{ width: `${scheduledIds.size ? (onDuty / scheduledIds.size) * 100 : 0}%` }}
-            />
-            <span
-              className="adm-segmented-bar__part adm-segmented-bar__part--missing"
-              style={{ width: `${scheduledIds.size ? (notTimedIn / scheduledIds.size) * 100 : 0}%` }}
-            />
-          </div>
-
-          <div className="adm-legend">
-            <span><i className="adm-legend__dot adm-legend__dot--completed" />Completed</span>
-            <span><i className="adm-legend__dot adm-legend__dot--ontime" />On duty</span>
-            <span><i className="adm-legend__dot adm-legend__dot--missing" />Not timed in</span>
-          </div>
-
-          <div className="adm-attendance-summary__foot">
-            <p>
-              {scheduledIds.size
-                ? `${completedRecords.length} of ${scheduledIds.size} scheduled students have a time in and time out.`
-                : 'No valid duty schedules match the current filters.'}
-            </p>
-            <Link to={attendanceHref} className="adm-text-link">
-              Open attendance records <ArrowRight size={14} aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
-
-        <section className="adm-card adm-trend-card" aria-labelledby="trend-title">
-          <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">7-day view</p>
-              <h3 id="trend-title">Attendance trend</h3>
-            </div>
-            <div className="adm-trend-card__average">
-              <strong>{trend.average}%</strong>
-              <span>avg. completion</span>
-            </div>
-          </div>
-
-          <div className="adm-trend-chart" role="img" aria-label={`Average completion ${trend.average}% over the last seven days`}>
-            {trend.days.map((day) => (
-              <div className={`adm-trend-bar ${day.isSelected ? 'is-selected' : ''}`} key={day.date}>
-                <span className="adm-trend-bar__value">{day.percent}%</span>
-                <div className="adm-trend-bar__track">
-                  <span
-                    className="adm-trend-bar__fill"
-                    style={{ height: `${Math.max(day.percent, 4)}%` }}
-                    title={`${day.completed} of ${day.scheduled} completed`}
-                  />
-                </div>
-                <span className="adm-trend-bar__label">{day.label}</span>
-              </div>
-            ))}
-          </div>
-          <p className="adm-trend-note">
-            Completion means both a time in and a time out were recorded for a scheduled student.
-          </p>
-        </section>
-      </div>
-
-      <div className="adm-dashboard-lower">
-        <section className="adm-card" aria-labelledby="recent-submissions-title">
-          <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">Latest activity</p>
-              <h3 id="recent-submissions-title">Recent attendance submissions</h3>
-            </div>
-            <Link to={attendanceHref} className="adm-text-link">
-              View all <ArrowRight size={14} aria-hidden="true" />
-            </Link>
-          </div>
-
-          {recentSubmissions.length ? (
+          {missingStudents.length ? (
             <div className="adm-recent-list">
-              {recentSubmissions.map((record) => {
+              {missingStudents.slice(0, MISSING_LIMIT).map((student) => (
+                <div className="adm-recent-row" key={student.id}>
+                  <Avatar name={student.name} size="sm" />
+                  <span className="adm-recent-row__main">
+                    <strong>{student.name}</strong>
+                    <span>{getGroupById(groups, student.groupId)?.name}</span>
+                  </span>
+                </div>
+              ))}
+              {missingStudents.length > MISSING_LIMIT && (
+                <p className="adm-more">+{missingStudents.length - MISSING_LIMIT} more</p>
+              )}
+            </div>
+          ) : (
+            <EmptyState icon={CheckCircle2} title="Everyone is timed in" />
+          )}
+        </section>
+
+        <section className="adm-card" aria-labelledby="followup-title">
+          <div className="adm-card__head">
+            <h3 id="followup-title">Needs follow-up</h3>
+            <Link to={attendanceHref} className="adm-text-link">
+              All <ArrowRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+          {attentionRecords.length ? (
+            <div className="adm-recent-list">
+              {attentionRecords.slice(0, 5).map((record) => {
                 const student = getStudentById(students, record.studentId)
-                const group = getGroupById(groups, record.groupId)
-                const location = getLocationById(locations, record.locationId)
                 const status = getRecordStatus(record)
                 return (
                   <button
@@ -446,16 +296,14 @@ export default function AdminDashboardPage() {
                     key={record.id}
                     onClick={() => setSelectedRecord(record)}
                   >
-                    <Avatar name={student?.name || 'Unknown student'} size="sm" />
+                    <Avatar name={student?.name || 'Unknown'} size="sm" />
                     <span className="adm-recent-row__main">
                       <strong>{student?.name}</strong>
                       <span>
-                        {group?.name} · {location?.name}
+                        {status.key === 'late'
+                          ? `Timed in ${formatTime(record.timeIn)}`
+                          : `No time out · ${formatDateMedium(record.date)}`}
                       </span>
-                    </span>
-                    <span className="adm-recent-row__times">
-                      <span>In {formatTime(record.timeIn)}</span>
-                      <small>Out {formatTime(record.timeOut)}</small>
                     </span>
                     <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                   </button>
@@ -463,67 +311,64 @@ export default function AdminDashboardPage() {
               })}
             </div>
           ) : (
-            <EmptyState
-              icon={UserCheck}
-              title="No submissions for this selection"
-              description="Try another date, group, year level, or clinical location."
-            />
+            <EmptyState icon={CheckCircle2} title="No follow-ups needed" />
           )}
         </section>
+      </div>
 
-        <section className="adm-card" aria-labelledby="recent-flags-title">
+      <div className="adm-dashboard-grid adm-dashboard-grid--even">
+        <section className="adm-card" aria-labelledby="recent-title">
           <div className="adm-card__head">
-            <div>
-              <p className="adm-eyebrow">Needs attention</p>
-              <h3 id="recent-flags-title">Recent flagged records</h3>
-            </div>
-            <Link to={flaggedHref} className="adm-text-link">
-              Review all <ArrowRight size={14} aria-hidden="true" />
+            <h3 id="recent-title">Latest</h3>
+            <Link to={attendanceHref} className="adm-text-link">
+              All <ArrowRight size={14} aria-hidden="true" />
             </Link>
           </div>
-
-          {recentFlags.length ? (
-            <div className="adm-flag-list">
-              {recentFlags.map((record) => {
+          {recentSubmissions.length ? (
+            <div className="adm-recent-list">
+              {recentSubmissions.map((record) => {
                 const student = getStudentById(students, record.studentId)
+                const status = getRecordStatus(record)
                 return (
                   <button
                     type="button"
-                    className="adm-flag-row"
+                    className="adm-recent-row"
                     key={record.id}
                     onClick={() => setSelectedRecord(record)}
                   >
-                    <span className="adm-flag-row__icon" aria-hidden="true">
-                      <AlertTriangle size={16} />
+                    <Avatar name={student?.name || 'Unknown'} size="sm" />
+                    <span className="adm-recent-row__main">
+                      <strong>{student?.name}</strong>
+                      <span>{getLocationById(locations, record.locationId)?.name}</span>
                     </span>
-                    <span className="adm-flag-row__copy">
-                      <strong>{record.flag.reason}</strong>
-                      <span>{student?.name} · {formatTime(record.flag.raisedAt)}</span>
+                    <span className="adm-recent-row__times">
+                      <span>{formatTime(record.timeIn)}</span>
+                      <small>{formatTime(record.timeOut)}</small>
                     </span>
-                    <StatusBadge tone={record.flag.status === 'Open' ? 'danger' : 'success'}>
-                      {record.flag.status}
-                    </StatusBadge>
+                    <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                   </button>
                 )
               })}
             </div>
           ) : (
-            <EmptyState
-              icon={CheckCircle2}
-              title="No flagged records"
-              description="Flags raised by facial verification or geofence checks will appear here."
-            />
+            <EmptyState icon={UserCheck} title="No submissions yet" />
           )}
+        </section>
 
-          <div className="adm-flag-summary">
-            <div>
-              <span>Open</span>
-              <strong>{flaggedRecords.length}</strong>
-            </div>
-            <div>
-              <span>Resolved today</span>
-              <strong>{filteredRecords.filter((record) => record.flag?.status === 'Resolved').length}</strong>
-            </div>
+        <section className="adm-card" aria-labelledby="trend-title">
+          <div className="adm-card__head">
+            <h3 id="trend-title">Last 7 days</h3>
+          </div>
+          <div className="adm-trend-chart" role="img" aria-label="Completion over the last seven days">
+            {trend.map((day) => (
+              <div className={`adm-trend-bar ${day.isSelected ? 'is-selected' : ''}`} key={day.date}>
+                <span className="adm-trend-bar__value">{day.percent}%</span>
+                <div className="adm-trend-bar__track">
+                  <span className="adm-trend-bar__fill" style={{ height: `${Math.max(day.percent, 4)}%` }} />
+                </div>
+                <span className="adm-trend-bar__label">{day.label}</span>
+              </div>
+            ))}
           </div>
         </section>
       </div>
@@ -532,9 +377,7 @@ export default function AdminDashboardPage() {
         open={Boolean(selectedRecord)}
         title="Attendance record"
         subtitle={
-          selectedRecord
-            ? `${getStudentById(students, selectedRecord.studentId)?.name || 'Student'} · ${formatDateLong(selectedRecord.date)}`
-            : ''
+          selectedRecord ? getStudentById(students, selectedRecord.studentId)?.name : ''
         }
         onClose={() => setSelectedRecord(null)}
       >

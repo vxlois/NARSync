@@ -5,7 +5,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Info,
-  Pencil,
   Plus,
   RotateCcw,
   Search,
@@ -63,19 +62,19 @@ function ScheduleDrawer({ schedule, onClose }) {
 
   const handleSave = () => {
     if (!form.groupId || !form.locationId || !form.date) {
-      setError('Assign a group, clinical location, and duty date before saving.')
+      setError('Fill in the required fields.')
       return
     }
     if (!form.startTime || !form.endTime) {
-      setError('Set both a scheduled start time and end time.')
+      setError('Set a start and end time.')
       return
     }
     if (form.endTime <= form.startTime) {
-      setError('The end time must be later than the start time.')
+      setError('End time must be later than start time.')
       return
     }
     if (form.status === 'Ready' && !isScheduleComplete(form)) {
-      setError('Complete every required field before marking this schedule ready for attendance.')
+      setError('Complete all fields before marking it ready.')
       return
     }
     saveSchedule(schedule?.id, {
@@ -85,10 +84,10 @@ function ScheduleDrawer({ schedule, onClose }) {
     })
     toast(
       schedule
-        ? 'Duty schedule updated.'
+        ? 'Schedule updated.'
         : form.status === 'Ready'
-          ? 'Duty schedule created and marked ready for attendance.'
-          : 'Duty schedule saved as a draft.',
+          ? 'Schedule created and ready.'
+          : 'Draft saved.',
       'success',
     )
     onClose()
@@ -97,11 +96,11 @@ function ScheduleDrawer({ schedule, onClose }) {
   return (
     <Drawer
       open
-      title={schedule ? 'Edit duty schedule' : 'Create a duty schedule'}
+      title={schedule ? 'Edit schedule' : 'New schedule'}
       subtitle={
         schedule
           ? `${formatDateLong(schedule.date)} · ${getGroupById(groups, schedule.groupId)?.name}`
-          : 'Required fields must be complete before the schedule is ready for attendance.'
+          : undefined
       }
       onClose={onClose}
       footer={
@@ -132,8 +131,8 @@ function ScheduleDrawer({ schedule, onClose }) {
           <strong>{derivedStatus.label}</strong>
           <p>
             {derivedStatus.attendanceReady
-              ? 'Attendance submission can open for this schedule.'
-              : 'Attendance submission is locked until this schedule is complete and marked ready.'}
+              ? 'Attendance can open.'
+              : 'Attendance stays locked until this schedule is ready.'}
           </p>
         </div>
       </div>
@@ -141,7 +140,7 @@ function ScheduleDrawer({ schedule, onClose }) {
       {warnings.length > 0 && (
         <div className="adm-validation-note">
           <p>
-            <Info size={15} aria-hidden="true" /> Required details still missing
+            <Info size={15} aria-hidden="true" /> Missing details
           </p>
           <ul>
             {warnings.map((warning) => (
@@ -153,7 +152,7 @@ function ScheduleDrawer({ schedule, onClose }) {
 
       <div className="adm-form-grid">
         <label className="adm-field">
-          <span>RLE group *</span>
+          <span>Group *</span>
           <select value={form.groupId} onChange={(event) => update('groupId', event.target.value)}>
             <option value="">Select a group</option>
             {groups.map((group) => (
@@ -165,7 +164,7 @@ function ScheduleDrawer({ schedule, onClose }) {
         </label>
 
         <label className="adm-field">
-          <span>Clinical location *</span>
+          <span>Location *</span>
           <select
             value={form.locationId}
             onChange={(event) => update('locationId', event.target.value)}
@@ -180,12 +179,12 @@ function ScheduleDrawer({ schedule, onClose }) {
         </label>
 
         <label className="adm-field">
-          <span>Duty date *</span>
+          <span>Date *</span>
           <input type="date" value={form.date} onChange={(event) => update('date', event.target.value)} />
         </label>
 
         <label className="adm-field">
-          <span>Clinical instructor</span>
+          <span>Instructor</span>
           <select
             value={form.instructor}
             onChange={(event) => update('instructor', event.target.value)}
@@ -200,7 +199,7 @@ function ScheduleDrawer({ schedule, onClose }) {
         </label>
 
         <label className="adm-field">
-          <span>Scheduled start time *</span>
+          <span>Start time *</span>
           <input
             type="time"
             value={form.startTime}
@@ -209,7 +208,7 @@ function ScheduleDrawer({ schedule, onClose }) {
         </label>
 
         <label className="adm-field">
-          <span>Scheduled end time *</span>
+          <span>End time *</span>
           <input
             type="time"
             value={form.endTime}
@@ -218,7 +217,7 @@ function ScheduleDrawer({ schedule, onClose }) {
         </label>
 
         <label className="adm-field">
-          <span>Schedule status</span>
+          <span>Status</span>
           <select value={form.status} onChange={(event) => update('status', event.target.value)}>
             <option value="Draft">Draft</option>
             <option value="Ready">Ready</option>
@@ -233,17 +232,12 @@ function ScheduleDrawer({ schedule, onClose }) {
             rows={3}
             value={form.notes}
             onChange={(event) => update('notes', event.target.value)}
-            placeholder="Optional call time, assembly point, or reminders"
+            placeholder="Optional notes"
           />
         </label>
       </div>
 
       {error && <p className="adm-form-error">{error}</p>}
-
-      <p className="adm-fineprint">
-        The clinical instructor is optional. Group, location, date, start time, and end time are
-        required before the schedule can be used for attendance submission.
-      </p>
     </Drawer>
   )
 }
@@ -305,6 +299,31 @@ export default function AdminSchedulesPage() {
     setDate('')
   }
 
+  const applyQuickFilter = (filter) => {
+    resetFilters()
+    if (filter === 'ready') setStatus('ready')
+    if (filter === 'drafts') setStatus('draft')
+    if (filter === 'incomplete') setStatus('incomplete')
+  }
+
+  const quickFilters = [
+    { key: 'all', label: 'All', count: schedules.length },
+    { key: 'ready', label: 'Ready', count: readyCount },
+    { key: 'drafts', label: 'Drafts', count: draftCount },
+    { key: 'incomplete', label: 'Incomplete', count: incompleteCount },
+  ]
+
+  const activeQuickFilter =
+    status === 'ready'
+      ? 'ready'
+      : status === 'draft'
+        ? 'drafts'
+        : status === 'incomplete'
+          ? 'incomplete'
+          : !search.trim() && groupId === 'all' && locationId === 'all' && !date
+            ? 'all'
+            : ''
+
   const openCreate = () => {
     setEditingSchedule(null)
     setDrawerOpen(true)
@@ -318,7 +337,7 @@ export default function AdminSchedulesPage() {
   const handlePublish = (schedule) => {
     try {
       publishSchedule(schedule.id)
-      toast('Schedule published. Attendance submission can now open for this duty.', 'success')
+      toast('Schedule published.', 'success')
     } catch (error) {
       toast(error.message, 'danger')
     }
@@ -327,13 +346,19 @@ export default function AdminSchedulesPage() {
   return (
     <div className="adm-page">
       <PageIntro
-        eyebrow="Duty planning"
-        title="Duty schedule management"
         meta={
           <>
-            <span className="adm-meta-pill"><strong>{readyCount}</strong> ready</span>
-            <span className="adm-meta-pill"><strong>{draftCount}</strong> drafts</span>
-            <span className="adm-meta-pill"><strong>{incompleteCount}</strong> incomplete</span>
+            {quickFilters.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                className={`adm-quick-filter ${activeQuickFilter === filter.key ? 'is-active' : ''}`}
+                onClick={() => applyQuickFilter(filter.key)}
+                aria-pressed={activeQuickFilter === filter.key}
+              >
+                <strong>{filter.count}</strong> {filter.label}
+              </button>
+            ))}
           </>
         }
         actions={
@@ -351,14 +376,14 @@ export default function AdminSchedulesPage() {
       />
 
       {!canManage && (
-        <ViewOnlyNotice message="Schedules can be reviewed, but creating, editing, and publishing schedules is restricted to the RLE Coordinator." />
+        <ViewOnlyNotice message="View only. Schedules can't be changed." />
       )}
 
       <section className="adm-filter-card" aria-label="Schedule filters">
         <div className="adm-filter-card__head">
           <span>
             <SlidersHorizontal size={15} aria-hidden="true" />
-            Search and filters
+            Filters
           </span>
           <button type="button" className="adm-text-btn" onClick={resetFilters}>
             <RotateCcw size={14} aria-hidden="true" />
@@ -409,7 +434,7 @@ export default function AdminSchedulesPage() {
             </select>
           </label>
           <label className="adm-field adm-field--inline">
-            <span>Duty date</span>
+            <span>Date</span>
             <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
           </label>
         </div>
@@ -418,8 +443,8 @@ export default function AdminSchedulesPage() {
       <section className="adm-card adm-card--table">
         <div className="adm-table-head">
           <div>
-            <h3>Duty schedules</h3>
-            <p>{filteredSchedules.length} schedules match the current filters.</p>
+            <h3>Schedules</h3>
+            <p>{filteredSchedules.length} shown</p>
           </div>
           <span className="adm-table-head__page">
             Page {page} of {Math.max(1, Math.ceil(filteredSchedules.length / PAGE_SIZE))}
@@ -429,17 +454,13 @@ export default function AdminSchedulesPage() {
         {pageSchedules.length ? (
           <>
             <div className="adm-table-wrap">
-              <table className="adm-table">
+              <table className="adm-table adm-table--fit">
                 <thead>
                   <tr>
-                    <th>Duty date</th>
+                    <th>Date</th>
                     <th>Group</th>
-                    <th>Clinical location</th>
-                    <th>Shift</th>
-                    <th>Clinical instructor</th>
+                    <th>Instructor</th>
                     <th>Status</th>
-                    <th>Attendance</th>
-                    <th className="adm-table__action">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -449,51 +470,60 @@ export default function AdminSchedulesPage() {
                     const scheduleStatus = getScheduleStatus(schedule)
                     const complete = isScheduleComplete(schedule)
                     return (
-                      <tr key={schedule.id}>
+                      <tr
+                        key={schedule.id}
+                        className={canManage ? 'adm-table__row--clickable' : undefined}
+                        onClick={canManage ? () => openEdit(schedule) : undefined}
+                      >
                         <td>
-                          <span className="adm-date-cell">
-                            <strong>{formatDateMedium(schedule.date)}</strong>
-                            {schedule.date === dateKey() && <span className="adm-today-tag">Today</span>}
-                          </span>
-                        </td>
-                        <td>
-                          <span className="adm-group-cell">
-                            <strong>{group?.name || 'Not assigned'}</strong>
-                          </span>
-                        </td>
-                        <td>{location?.name || <span className="adm-muted">Not assigned</span>}</td>
-                        <td className="adm-mono">{schedule.startTime || '—'} – {schedule.endTime || '—'}</td>
-                        <td>{schedule.instructor || 'Not assigned'}</td>
-                        <td>
-                          <StatusBadge tone={scheduleStatus.tone}>{scheduleStatus.label}</StatusBadge>
-                        </td>
-                        <td>
-                          <StatusBadge tone={scheduleStatus.attendanceReady ? 'success' : 'neutral'}>
-                            {scheduleStatus.attendanceReady ? 'Open' : 'Locked'}
-                          </StatusBadge>
-                        </td>
-                        <td className="adm-table__action">
-                          <span className="adm-row-actions">
-                            {canManage && scheduleStatus.key === 'draft' && complete && (
+                          <div className="adm-cell-stack">
+                            <span className="adm-date-cell">
                               <button
                                 type="button"
-                                className="adm-text-btn"
-                                onClick={() => handlePublish(schedule)}
+                                className="adm-table-link"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  if (canManage) openEdit(schedule)
+                                }}
+                                disabled={!canManage}
                               >
-                                Publish
+                                {formatDateMedium(schedule.date)}
                               </button>
-                            )}
-                            <button
-                              type="button"
-                              className="adm-text-btn"
-                              onClick={() => openEdit(schedule)}
-                              disabled={!canManage}
-                              title={!canManage ? 'Department Head access is view-only.' : undefined}
-                            >
-                              <Pencil size={13} aria-hidden="true" />
-                              Edit
-                            </button>
-                          </span>
+                              {schedule.date === dateKey() && <span className="adm-today-tag">Today</span>}
+                            </span>
+                            <span className="adm-cell-sub adm-mono">
+                              {schedule.startTime || '—'}–{schedule.endTime || '—'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="adm-cell-stack">
+                            <strong>{group?.name || 'Not assigned'}</strong>
+                            <span className="adm-cell-sub">{location?.name || 'No location'}</span>
+                          </div>
+                        </td>
+                        <td>{schedule.instructor || <span className="adm-muted">Not assigned</span>}</td>
+                        <td>
+                          <div className="adm-cell-stack">
+                            <span className="adm-status-line">
+                              <StatusBadge tone={scheduleStatus.tone}>{scheduleStatus.label}</StatusBadge>
+                              {canManage && scheduleStatus.key === 'draft' && complete && (
+                                <button
+                                  type="button"
+                                  className="adm-text-btn adm-text-btn--sm"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    handlePublish(schedule)
+                                  }}
+                                >
+                                  Publish
+                                </button>
+                              )}
+                            </span>
+                            <span className="adm-cell-sub">
+                              {scheduleStatus.attendanceReady ? 'Attendance open' : 'Attendance locked'}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -511,10 +541,18 @@ export default function AdminSchedulesPage() {
         ) : (
           <EmptyState
             icon={CalendarDays}
-            title="No schedules found"
-            description="Adjust the filters or create a new duty schedule."
+            title="No schedules"
+            description={
+              schedules.length
+                ? 'Adjust the filters to see more.'
+                : 'Create a schedule to get started.'
+            }
             action={
-              canManage ? (
+              schedules.length ? (
+                <button type="button" className="adm-btn adm-btn--secondary" onClick={resetFilters}>
+                  Clear filters
+                </button>
+              ) : canManage ? (
                 <button type="button" className="adm-btn adm-btn--primary" onClick={openCreate}>
                   <Plus size={16} aria-hidden="true" />
                   Create schedule

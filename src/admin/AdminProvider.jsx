@@ -52,7 +52,7 @@ export default function AdminProvider({ children }) {
   const [groups, setGroups] = useState(initialData.groups)
   const [schedules, setSchedules] = useState(initialData.schedules)
   const [locations, setLocations] = useState(initialData.locations)
-  const [records, setRecords] = useState(initialData.records)
+  const [records] = useState(initialData.records)
   const [notifications, setNotifications] = useState(initialData.notifications)
   const [settings, setSettings] = useState(initialData.settings)
 
@@ -216,31 +216,6 @@ export default function AdminProvider({ children }) {
     [assertManage],
   )
 
-  const resolveFlag = useCallback(
-    (recordId, resolution) => {
-      assertManage()
-      if (!resolution.trim()) {
-        throw new Error('Add a short resolution note before closing this flag.')
-      }
-      setRecords((current) =>
-        current.map((record) => {
-          if (record.id !== recordId || !record.flag) return record
-          return {
-            ...record,
-            flag: {
-              ...record.flag,
-              status: 'Resolved',
-              resolution: resolution.trim(),
-              resolvedAt: new Date().toISOString(),
-              resolvedBy: currentUser.name,
-            },
-          }
-        }),
-      )
-    },
-    [assertManage, currentUser.name],
-  )
-
   const updateSettings = useCallback(
     (patch) => {
       assertManage()
@@ -261,11 +236,6 @@ export default function AdminProvider({ children }) {
     setNotifications((current) => current.map((notification) => ({ ...notification, read: true })))
   }, [])
 
-  const openFlagCount = useMemo(
-    () => records.filter((record) => record.flag?.status === 'Open').length,
-    [records],
-  )
-
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read).length,
     [notifications],
@@ -284,7 +254,6 @@ export default function AdminProvider({ children }) {
       records,
       notifications,
       settings,
-      openFlagCount,
       unreadCount,
       assignStudentToGroup,
       saveGroup,
@@ -292,7 +261,6 @@ export default function AdminProvider({ children }) {
       saveSchedule,
       publishSchedule,
       saveLocation,
-      resolveFlag,
       updateSettings,
       markNotificationRead,
       markAllNotificationsRead,
@@ -309,7 +277,6 @@ export default function AdminProvider({ children }) {
       records,
       notifications,
       settings,
-      openFlagCount,
       unreadCount,
       assignStudentToGroup,
       saveGroup,
@@ -317,7 +284,6 @@ export default function AdminProvider({ children }) {
       saveSchedule,
       publishSchedule,
       saveLocation,
-      resolveFlag,
       updateSettings,
       markNotificationRead,
       markAllNotificationsRead,
